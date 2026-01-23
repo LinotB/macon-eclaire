@@ -55,11 +55,11 @@ export default function Revision() {
     },
     {
       id: "mix",
-      title: "Mix",
+      title: "Quiz",
       subtitle: "Aléatoire",
       icon: mixIcon, // si tu ne veux pas d’icône → supprime cette ligne
       bg: "from-[#1F2937] to-[#111827]",
-      tag: "TOUT",
+      
     },
   ];
 
@@ -134,17 +134,19 @@ export default function Revision() {
                 )}
 
                 {/* Icon */}
-                <div className="relative z-10 mx-auto w-16 h-16 rounded-2xl bg-black/25 border border-white/15 flex items-center justify-center mb-5">
-                  {t.icon ? (
+                <div className="relative z-10 mx-auto mb-6 flex items-center justify-center">
+                {t.icon ? (
                     <img
-                      src={t.icon}
-                      alt={t.title}
-                      className="w-9 h-9 object-contain"
+                    src={t.icon}
+                    alt={t.title}
+                    className="w-24 h-24 object-contain"
+                    draggable="false"
                     />
-                  ) : (
-                    <span className="text-[#D4AF37] text-xl">∴</span>
-                  )}
+                ) : (
+                    <span className="text-[#D4AF37] text-2xl">∴</span>
+                )}
                 </div>
+
 
                 {/* Text */}
                 <div className="relative z-10">

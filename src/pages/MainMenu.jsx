@@ -93,16 +93,39 @@ export default function MainMenu() {
           </div>
 
           <div className="flex items-center gap-4 text-white/45">
-            <button className="hover:text-white/70 transition" aria-label="Profil">
-              <User size={18} />
-            </button>
-            <button className="hover:text-white/70 transition" aria-label="Stats">
-              <BarChart3 size={18} />
-            </button>
-            <button className="hover:text-white/70 transition" aria-label="Paramètres">
-              <Settings size={18} />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => navigate("/profile")}
+            className="hover:text-white/70 transition"
+            aria-label="Profil"
+            title="Profil"
+          >
+            <User size={18} />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate("/stats")}
+            className="hover:text-white/70 transition"
+            aria-label="Stats"
+            title="Stats"
+          >
+            <BarChart3 size={18} />
+          </button>
+
+
+
+          <button
+            type="button"
+            onClick={() => navigate("/settings")}
+            className="hover:text-white/70 transition"
+            aria-label="Paramètres"
+            title="Paramètres"
+          >
+            <Settings size={18} />
+          </button>
+        </div>
+
         </div>
       </header>
 
@@ -116,8 +139,9 @@ export default function MainMenu() {
             className="text-center mt-6 mb-10"
           >
             <h1 className="font-display text-3xl md:text-5xl tracking-[0.12em]">
-              BIENVENUE, <span className="text-[#D4AF37]">{grade.toUpperCase()}</span>
+              BIENVENUE, <span className="text-[#D4AF37]">{pseudo}</span>
             </h1>
+
             <p className="font-body text-white/60 italic mt-2">
               Choisissez votre voie sur le chemin de la Lumière
             </p>

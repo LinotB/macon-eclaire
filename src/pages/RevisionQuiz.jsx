@@ -5,14 +5,15 @@ import { motion } from "framer-motion";
 import { ArrowLeft, RotateCcw, Lightbulb } from "lucide-react";
 import StarField from "../components/ui/StarField";
 
-// ✅ images officielles des thématiques
 import themeSymboles from "../assets/themes/symboles.png";
 import themeRituels from "../assets/themes/rituels.png";
 import themeHistoire from "../assets/themes/histoire.png";
 import themeReglement from "../assets/themes/reglement.png";
 import themeDefis from "../assets/themes/defis.png";
-// optionnel : si tu as un visuel “mix”
 import themeMix from "../assets/themes/mix.png";
+
+import pierreOr from "../assets/ui/pierre-or.png";
+import DifficultyStones from "../components/ui/DifficultyStones";
 
 const THEME_CONFIG = {
   symboles: {
@@ -53,12 +54,13 @@ const THEME_CONFIG = {
   },
 };
 
-// ✅ mini banque d’exemples (à remplacer par tes vraies cartes / backend)
+// ✅ mini banque d’exemples (avec points 1/2/3)
 const BANK = {
   symboles: [
     {
       id: "sym-1",
       title: "QUESTION",
+      points: 2,
       question:
         "Que symbolisent principalement l’équerre et le compas en franc-maçonnerie ?",
       answers: [
@@ -76,6 +78,7 @@ const BANK = {
     {
       id: "rit-1",
       title: "QUESTION",
+      points: 3,
       question:
         "Dans un cadre rituel, à quoi sert principalement la répétition des gestes et des paroles ?",
       answers: [
@@ -93,6 +96,7 @@ const BANK = {
     {
       id: "his-1",
       title: "QUESTION",
+      points: 1,
       question:
         "Quel est l’intérêt d’étudier l’histoire des courants initiatiques et des loges ?",
       answers: [
@@ -110,6 +114,7 @@ const BANK = {
     {
       id: "reg-1",
       title: "QUESTION",
+      points: 2,
       question:
         "À quoi sert principalement un règlement intérieur dans une organisation ?",
       answers: [
@@ -127,6 +132,7 @@ const BANK = {
     {
       id: "def-1",
       title: "DÉFI",
+      points: 2,
       question:
         "Choisissez la meilleure réponse : un défi initiatique personnel vise surtout à…",
       answers: [
@@ -160,8 +166,7 @@ export default function RevisionQuiz() {
 
   const [index, setIndex] = useState(0);
 
-  // état de réponse
-  const [picked, setPicked] = useState(null); // index cliqué
+  const [picked, setPicked] = useState(null);
   const [revealed, setRevealed] = useState(false);
 
   const card = cards[index];
@@ -192,7 +197,6 @@ export default function RevisionQuiz() {
     setRevealed(true);
   };
 
-  // ✅ rendu “comme ta capture” : bordure + fond + glow vert/rouge
   const answerClass = (i) => {
     if (!revealed) {
       return [
@@ -204,7 +208,6 @@ export default function RevisionQuiz() {
     const isCorrect = correctSet.has(i);
     const isPicked = picked === i;
 
-    // bonne réponse (toujours visible)
     if (isCorrect) {
       return [
         "border-emerald-400/70 bg-emerald-500/12",
@@ -212,7 +215,6 @@ export default function RevisionQuiz() {
       ].join(" ");
     }
 
-    // mauvaise choisie
     if (isPicked && !isCorrect) {
       return [
         "border-red-400/70 bg-red-500/10",
@@ -220,19 +222,17 @@ export default function RevisionQuiz() {
       ].join(" ");
     }
 
-    // autres
     return "border-white/10 bg-[#0B1120]/35 opacity-80";
   };
+
+  const progressPct = Math.round(((index + 1) / cards.length) * 100);
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#0B1120] text-white">
       <StarField intensity={45} />
-
-      {/* overlays */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-[#0B1120]/40 to-[#0B1120]" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(212,175,55,0.08),transparent_55%)] pointer-events-none" />
 
-      {/* Header */}
       <header className="relative z-10 px-6 py-6">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <Link
@@ -259,7 +259,6 @@ export default function RevisionQuiz() {
 
       <main className="relative z-10 px-6 pb-24">
         <div className="max-w-6xl mx-auto">
-          {/* Card wrapper */}
           <motion.div
             key={card.id}
             initial={{ opacity: 0, y: 14 }}
@@ -267,46 +266,57 @@ export default function RevisionQuiz() {
             transition={{ duration: 0.45 }}
             className="max-w-5xl mx-auto rounded-2xl border border-[#D4AF37]/25 bg-white/5 overflow-hidden shadow-[0_0_60px_rgba(0,0,0,0.35)]"
           >
-            {/* Top colored header */}
             <div
               className="px-10 md:px-12 py-8 md:py-10"
               style={{
                 background: `linear-gradient(180deg, ${theme.headerFrom}, ${theme.headerTo})`,
               }}
             >
-              {/* ✅ image à gauche, plus grosse, SANS encadré */}
-              <div className="flex items-start gap-8">
-                <img
-                  src={theme.image}
-                  alt={theme.label}
-                  draggable="false"
-                  className="w-16 h-16 md:w-20 md:h-20 object-contain drop-shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
-                />
-                <div className="flex-1">
-                {/* QUESTION */}
-                <div className="font-display tracking-[0.22em] text-2xl md:text-3xl">
-                    {card.title}
+              {/* ✅ header = gauche (thème) + droite (progress + difficulté) */}
+              <div className="flex items-start justify-between gap-8">
+                <div className="flex items-start gap-8">
+                  <img
+                    src={theme.image}
+                    alt={theme.label}
+                    draggable="false"
+                    className="w-16 h-16 md:w-20 md:h-20 object-contain drop-shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
+                  />
+
+                  <div>
+                    <div className="font-display tracking-[0.22em] text-2xl md:text-3xl">
+                      {card.title}
+                    </div>
+
+                    <div className="mt-4 h-px w-56 bg-gradient-to-r from-transparent via-[#D4AF37]/60 to-transparent" />
+
+                    <div className="mt-4 font-display tracking-[0.18em] text-sm text-white/70">
+                      {theme.label}
+                    </div>
+                  </div>
                 </div>
 
-                {/* TRAIT DORÉ SOUS QUESTION */}
-<div className="mt-4 h-px w-56 bg-gradient-to-r from-transparent via-[#D4AF37]/60 to-transparent" />
+                <div className="text-right flex flex-col items-end gap-2">
+                  <div className="font-display tracking-[0.14em] text-xs text-white/70">
+                    CARTE {index + 1} / {cards.length}
+                  </div>
 
-                {/* SYMBOLE / RITUEL / ETC */}
-                <div className="mt-4 font-display tracking-[0.18em] text-sm text-white/70">
-                    {theme.label}
-                </div>
-                </div>
+                  <div className="font-display text-xs text-white/60">
+                    {progressPct}%
+                  </div>
 
+                  <DifficultyStones
+                    points={card.points || 1}
+                    src={pierreOr}
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Content */}
             <div className="px-10 md:px-12 py-10 md:py-12">
               <div className="font-body text-lg md:text-xl text-white/80 italic mb-8">
                 {card.question}
               </div>
 
-              {/* Answers */}
               <div className="space-y-4">
                 {card.answers.map((a, i) => {
                   const isCorrect = revealed && correctSet.has(i);
@@ -332,16 +342,11 @@ export default function RevisionQuiz() {
                           <span className="text-white/80">{a}</span>
                         </div>
 
-                        {/* ✅ petite icône OK/KO + la carte s’allume en vert/rouge */}
                         {showGood && (
-                          <span className="text-emerald-300 font-display text-lg">
-                            ✓
-                          </span>
+                          <span className="text-emerald-300 font-display text-lg">✓</span>
                         )}
                         {showBad && (
-                          <span className="text-red-300 font-display text-lg">
-                            ✗
-                          </span>
+                          <span className="text-red-300 font-display text-lg">✗</span>
                         )}
                       </div>
                     </button>
@@ -349,7 +354,6 @@ export default function RevisionQuiz() {
                 })}
               </div>
 
-              {/* Feedback */}
               {revealed && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
@@ -369,7 +373,6 @@ export default function RevisionQuiz() {
               )}
             </div>
 
-            {/* Bottom CTA */}
             <div className="px-10 md:px-12 py-10 bg-gradient-to-b from-transparent to-black/25 border-t border-white/10">
               <button
                 onClick={nextCard}
@@ -387,7 +390,6 @@ export default function RevisionQuiz() {
             </div>
           </motion.div>
 
-          {/* progress */}
           <div className="max-w-5xl mx-auto mt-6 text-center text-white/35 font-body text-xs">
             Carte {index + 1} / {cards.length}
           </div>

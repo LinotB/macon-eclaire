@@ -18,6 +18,12 @@ import {
 } from "lucide-react";
 import StarField from "../components/ui/StarField";
 
+function getAvatarUrl(grade) {
+  if (grade === "Compagnon") return "/avatars/compagnon.png";
+  if (grade === "Maître") return "/avatars/maitre.png";
+  return "/avatars/apprenti.png"; // Apprenti par défaut
+}
+
 export default function CreateCharacter() {
   const navigate = useNavigate();
   const { setCharacter } = useCharacter();
@@ -130,12 +136,16 @@ export default function CreateCharacter() {
   const [rite, setRite] = useState(rites[0].key);
 
   // ✅ Persist à chaque "Suivant"
+  // ✅ ICI on enregistre aussi avatarUrl
   const persist = () => {
+    const avatarUrl = getAvatarUrl(grade);
+
     setCharacter((prev) => ({
       ...prev,
       pseudo: name.trim() || prev.pseudo,
       grade: grade || prev.grade,
       rite: rite || prev.rite,
+      avatarUrl, // ✅ IMPORTANT (sera stocké via CharacterContext -> localStorage)
       appearance: {
         ...(prev.appearance || {}),
         skin,
@@ -271,15 +281,13 @@ export default function CreateCharacter() {
             {stepIndex === 1 && (
               <div className="flex flex-col items-center">
                 {/* Avatar preview */}
-                <div className="w-28 h-28 rounded-full border border-[#D4AF37]/40 bg-white/5 flex items-center justify-center shadow-[0_0_30px_rgba(212,175,55,0.12)]">
-                  <div
-                    className="w-24 h-24 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: skin }}
-                    aria-label="Aperçu avatar"
-                    title="Aperçu"
-                  >
-                    <User size={34} className="text-black/45" />
-                  </div>
+                <div className="w-28 h-28 rounded-full border border-[#D4AF37]/40 bg-white/5 overflow-hidden shadow-[0_0_30px_rgba(212,175,55,0.12)]">
+                  <img
+                    src={getAvatarUrl(grade)}
+                    alt="Aperçu avatar"
+                    className="w-full h-full object-cover"
+                    draggable="false"
+                  />
                 </div>
 
                 <div className="mt-3 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-display tracking-[0.12em] text-white/70">
@@ -416,7 +424,7 @@ export default function CreateCharacter() {
               </div>
             )}
 
-            {/* ✅ STEP 4: Rite */}
+            {/* STEP 4: Rite */}
             {stepIndex === 3 && (
               <div className="w-full">
                 <div className="flex items-center justify-center mb-8">
@@ -481,7 +489,7 @@ export default function CreateCharacter() {
             )}
           </motion.div>
 
-          {/* Footer nav (pas de bouton séparé par étape : on garde le même) */}
+          {/* Footer nav */}
           <div className="max-w-3xl mx-auto mt-10 flex items-center justify-between">
             <button
               type="button"

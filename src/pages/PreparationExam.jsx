@@ -5,14 +5,15 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Timer, RotateCcw, Swords } from "lucide-react";
 import StarField from "../components/ui/StarField";
 
-// ✅ images officielles des thématiques
 import themeSymboles from "../assets/themes/symboles.png";
 import themeRituels from "../assets/themes/rituels.png";
 import themeHistoire from "../assets/themes/histoire.png";
 import themeReglement from "../assets/themes/reglement.png";
 import themeDefis from "../assets/themes/defis.png";
 
-// --- Thèmes (couleurs identiques à ton RevisionQuiz) ---
+import pierreOr from "../assets/ui/pierre-or.png";
+import DifficultyStones from "../components/ui/DifficultyStones";
+
 const THEME_CONFIG = {
   symboles: {
     label: "SYMBOLE",
@@ -46,13 +47,14 @@ const THEME_CONFIG = {
   },
 };
 
-// --- Banque (exemples). Ajoute autant de questions que tu veux ---
+// ✅ Banque (avec points)
 const BANK = {
   symboles: [
     {
       id: "sym-1",
       theme: "symboles",
       title: "QUESTION",
+      points: 2,
       question:
         "Que symbolisent principalement l’équerre et le compas en franc-maçonnerie ?",
       answers: [
@@ -71,6 +73,7 @@ const BANK = {
       id: "rit-1",
       theme: "rituels",
       title: "QUESTION",
+      points: 3,
       question:
         "Dans un cadre rituel, à quoi sert principalement la répétition des gestes et des paroles ?",
       answers: [
@@ -89,6 +92,7 @@ const BANK = {
       id: "his-1",
       theme: "histoire",
       title: "QUESTION",
+      points: 1,
       question:
         "Quel est l’intérêt d’étudier l’histoire des courants initiatiques et des loges ?",
       answers: [
@@ -107,6 +111,7 @@ const BANK = {
       id: "reg-1",
       theme: "reglement",
       title: "QUESTION",
+      points: 2,
       question:
         "À quoi sert principalement un règlement intérieur dans une organisation ?",
       answers: [
@@ -125,6 +130,7 @@ const BANK = {
       id: "def-1",
       theme: "defis",
       title: "DÉFI",
+      points: 2,
       question:
         "Choisissez la meilleure réponse : un défi initiatique personnel vise surtout à…",
       answers: [
@@ -140,7 +146,6 @@ const BANK = {
   ],
 };
 
-// --- utils ---
 function shuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -175,7 +180,6 @@ export default function PreparationExam() {
   }, []);
 
   const cards = useMemo(() => {
-    // on limite au nombre de questions prévu
     return allCards.slice(0, Math.min(examConfig.questions, allCards.length));
   }, [allCards, examConfig.questions]);
 
@@ -185,7 +189,6 @@ export default function PreparationExam() {
 
   const [secondsLeft, setSecondsLeft] = useState(examConfig.minutes * 60);
 
-  // chrono
   useEffect(() => {
     const t = setInterval(() => {
       setSecondsLeft((s) => Math.max(0, s - 1));
@@ -193,21 +196,15 @@ export default function PreparationExam() {
     return () => clearInterval(t);
   }, []);
 
-  // fin du temps => retour menu (ou écran de résultat plus tard)
   useEffect(() => {
-    if (secondsLeft === 0) {
-      navigate("/menu");
-    }
+    if (secondsLeft === 0) navigate("/menu");
   }, [secondsLeft, navigate]);
 
   const card = cards[index];
-  const correctSet = useMemo(
-    () => new Set(card?.correctIndexes || []),
-    [card]
-  );
+
+  const correctSet = useMemo(() => new Set(card?.correctIndexes || []), [card]);
 
   const restart = () => {
-    // simple : on repart au début + reset états + reset chrono
     setIndex(0);
     setPicked(null);
     setRevealed(false);
@@ -220,7 +217,6 @@ export default function PreparationExam() {
       setPicked(null);
       setRevealed(false);
     } else {
-      // fin examen => menu (tu pourras mettre un écran résultat)
       navigate("/menu");
     }
   };
@@ -232,22 +228,13 @@ export default function PreparationExam() {
   };
 
   const answerClass = (i) => {
-    if (!revealed) {
-      return "border-white/10 bg-[#0B1120]/35 hover:border-white/20";
-    }
+    if (!revealed) return "border-white/10 bg-[#0B1120]/35 hover:border-white/20";
+
     const isCorrect = correctSet.has(i);
     const isPicked = picked === i;
 
-    // ✅ bonne réponse allumée vert (même si pas choisie)
-    if (isCorrect) {
-      return "border-emerald-500/60 bg-emerald-500/15";
-    }
-
-    // ❌ mauvaise choisie rouge
-    if (isPicked && !isCorrect) {
-      return "border-red-500/60 bg-red-500/12";
-    }
-
+    if (isCorrect) return "border-emerald-500/60 bg-emerald-500/15";
+    if (isPicked && !isCorrect) return "border-red-500/60 bg-red-500/12";
     return "border-white/10 bg-[#0B1120]/35 opacity-80";
   };
 
@@ -265,12 +252,9 @@ export default function PreparationExam() {
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#0B1120] text-white">
       <StarField intensity={45} />
-
-      {/* overlays */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-[#0B1120]/40 to-[#0B1120]" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(212,175,55,0.08),transparent_55%)] pointer-events-none" />
 
-      {/* Header */}
       <header className="relative z-10 px-6 py-6">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <Link
@@ -307,7 +291,6 @@ export default function PreparationExam() {
 
       <main className="relative z-10 px-6 pb-24">
         <div className="max-w-6xl mx-auto">
-          {/* Question Card */}
           <motion.div
             key={card.id}
             initial={{ opacity: 0, y: 14 }}
@@ -315,7 +298,6 @@ export default function PreparationExam() {
             transition={{ duration: 0.45 }}
             className="max-w-5xl mx-auto rounded-2xl border border-[#D4AF37]/18 bg-white/5 overflow-hidden shadow-[0_0_60px_rgba(0,0,0,0.35)]"
           >
-            {/* Header color per theme */}
             <div
               className="px-10 py-8"
               style={{
@@ -323,7 +305,6 @@ export default function PreparationExam() {
               }}
             >
               <div className="flex items-start justify-between gap-8">
-                {/* Left: big image */}
                 <div className="flex items-start gap-6">
                   <img
                     src={theme.image}
@@ -337,8 +318,7 @@ export default function PreparationExam() {
                       {card.title}
                     </div>
 
-                    {/* gold line under QUESTION */}
-<div className="mt-4 h-px w-56 bg-gradient-to-r from-transparent via-[#D4AF37]/60 to-transparent" />
+                    <div className="mt-4 h-px w-56 bg-gradient-to-r from-transparent via-[#D4AF37]/60 to-transparent" />
 
                     <div className="mt-4 font-display tracking-[0.18em] text-sm text-white/75">
                       {theme.label}
@@ -346,19 +326,20 @@ export default function PreparationExam() {
                   </div>
                 </div>
 
-                {/* Right: progress */}
-                <div className="text-right">
+                {/* ✅ progress + difficulté */}
+                <div className="text-right flex flex-col items-end gap-2">
                   <div className="font-display text-xs tracking-[0.18em] text-white/65">
                     QUESTION
                   </div>
-                  <div className="mt-1 font-display text-[#D4AF37]">
+                  <div className="font-display text-[#D4AF37]">
                     {index + 1}/{cards.length}
                   </div>
+
+                  <DifficultyStones points={card.points || 1} src={pierreOr} />
                 </div>
               </div>
             </div>
 
-            {/* Content */}
             <div className="px-10 py-10">
               <div className="font-body text-lg md:text-xl text-white/80 italic mb-8">
                 {card.question}
@@ -387,7 +368,6 @@ export default function PreparationExam() {
                           <span className="text-white/75">{a}</span>
                         </div>
 
-                        {/* On garde les petits symboles si tu veux, mais la couleur reste le signal principal */}
                         {revealed && isCorrect && (
                           <span className="text-emerald-400 font-display">✓</span>
                         )}
@@ -400,7 +380,6 @@ export default function PreparationExam() {
                 })}
               </div>
 
-              {/* Feedback */}
               {revealed && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
@@ -420,7 +399,6 @@ export default function PreparationExam() {
               )}
             </div>
 
-            {/* Bottom */}
             <div className="px-10 py-10 bg-gradient-to-b from-transparent to-black/25 border-t border-white/10">
               <button
                 onClick={nextCard}

@@ -14,6 +14,7 @@ import themeDefis from "../assets/themes/defis.png";
 import themeMix from "../assets/themes/mix.png";
 
 import { useProgress } from "../context/ProgressContext";
+import pierreOr from "../assets/ui/pierre-or.png";
 
 // -------------------------
 // Config duel
@@ -89,14 +90,13 @@ const THEME_CONFIG = {
 
 // -------------------------
 // Banque de questions (démo)
-// IMPORTANT : chaque carte a un `theme`
-// correctIndexes = 1 ou plusieurs bonnes réponses
 // -------------------------
 const BANK = [
   {
     id: "sym-1",
     theme: "symboles",
     title: "QUESTION",
+    points: 2,
     question:
       "Que symbolisent principalement l’équerre et le compas en franc-maçonnerie ?",
     answers: [
@@ -113,6 +113,7 @@ const BANK = [
     id: "rit-1",
     theme: "rituels",
     title: "QUESTION",
+    points: 3,
     question:
       "Dans un cadre rituel, à quoi sert principalement la répétition des gestes et des paroles ?",
     answers: [
@@ -129,6 +130,7 @@ const BANK = [
     id: "his-1",
     theme: "histoire",
     title: "QUESTION",
+    points: 1,
     question:
       "Quel est l’intérêt d’étudier l’histoire des courants initiatiques et des loges ?",
     answers: [
@@ -145,6 +147,7 @@ const BANK = [
     id: "reg-1",
     theme: "reglement",
     title: "QUESTION",
+    points: 2,
     question:
       "À quoi sert principalement un règlement intérieur dans une organisation ?",
     answers: [
@@ -161,6 +164,7 @@ const BANK = [
     id: "def-1",
     theme: "defis",
     title: "DÉFI",
+    points: 2,
     question:
       "Choisissez les affirmations correctes : un défi initiatique personnel vise surtout à…",
     answers: [
@@ -169,7 +173,6 @@ const BANK = [
       "Gagner uniquement des récompenses",
       "Observer ses réactions et progresser",
     ],
-    // ✅ multi bonnes réponses
     correctIndexes: [1, 3],
     feedback:
       "L’objectif est l’effort intérieur : discipline, constance, observation de soi et progression personnelle.",
@@ -194,6 +197,57 @@ function shuffle(arr) {
   return a;
 }
 
+/**
+ * ✅ Rendu difficulté plus élégant:
+ * - 1/2/3 pierres
+ * - + un petit badge "NIVEAU" à côté
+ * - avec halo / opacity progressive
+ */
+function DifficultyStones({ points = 1, src }) {
+  const n = Math.max(1, Math.min(3, Number(points) || 1));
+
+  const label =
+    n === 1 ? "FACILE" : n === 2 ? "INTERMÉDIAIRE" : "DIFFICILE";
+
+  return (
+    <div className="inline-flex items-center gap-3">
+      <div className="inline-flex items-center gap-1.5">
+        {Array.from({ length: 3 }).map((_, i) => {
+          const active = i < n;
+          return (
+            <div
+              key={i}
+              className={[
+                "relative w-6 h-6",
+                active ? "opacity-100" : "opacity-25",
+              ].join(" ")}
+            >
+              {active && (
+                <div className="absolute inset-0 rounded-full blur-md bg-[#D4AF37]/25" />
+              )}
+              <img
+                src={src}
+                alt=""
+                className="relative w-6 h-6 object-contain select-none"
+                draggable="false"
+              />
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="hidden md:inline-flex items-center">
+        <span className="px-2.5 py-1 rounded-full text-[10px] font-display tracking-[0.16em] border border-white/15 bg-black/20 text-white/70">
+          {label}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// -------------------------
+// Page
+// -------------------------
 export default function DuelPlay() {
   const { duelId } = useParams();
   const navigate = useNavigate();
@@ -245,8 +299,6 @@ export default function DuelPlay() {
   const correctSet = useMemo(() => new Set(card?.correctIndexes || []), [card]);
   const isMulti = (card?.correctIndexes || []).length > 1;
 
-  // single: pickedIndex number
-  // multi: pickedSet Set<number>
   const [pickedIndex, setPickedIndex] = useState(null);
   const [pickedSet, setPickedSet] = useState(() => new Set());
   const [revealed, setRevealed] = useState(false);
@@ -335,7 +387,6 @@ export default function DuelPlay() {
 
     const xpBonus = win ? 50 : 0;
 
-    // petites récompenses “placeholder”
     const rewardId =
       win && duelId === "quick"
         ? "cos_common_1"
@@ -347,14 +398,7 @@ export default function DuelPlay() {
 
     recordDuelFinished({ won: win, xpBonus, rewardId });
     setResultSaved(true);
-  }, [
-    finished,
-    resultSaved,
-    correctCount,
-    wrongCount,
-    duelId,
-    recordDuelFinished,
-  ]);
+  }, [finished, resultSaved, correctCount, wrongCount, duelId, recordDuelFinished]);
 
   // ✅ quand finished = true => on va sur la page result
   useEffect(() => {
@@ -397,8 +441,9 @@ export default function DuelPlay() {
     if (revealed) return;
 
     const user = pickedSet;
+
+    // ✅ FIX: calcul correct, puis recordAnswer après
     const allCorrectPicked =
-    recordAnswer({ theme: themeKey, mode: "duel", isCorrect: allCorrectPicked });
       user.size > 0 &&
       user.size === correctSet.size &&
       [...user].every((x) => correctSet.has(x));
@@ -463,9 +508,6 @@ export default function DuelPlay() {
     return "border-white/10 bg-[#0B1120]/35 opacity-80";
   };
 
-  // -------------------------
-  // UI duel en cours
-  // -------------------------
   const progressPct = Math.round(((index + 1) / cfg.totalQuestions) * 100);
 
   return (
@@ -490,7 +532,6 @@ export default function DuelPlay() {
           </div>
 
           <div className="inline-flex items-center gap-3">
-            {/* global timer */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-white/5">
               <Clock size={16} className="text-[#D4AF37]" />
               <span className="font-display text-xs tracking-[0.12em] text-white/80">
@@ -498,7 +539,6 @@ export default function DuelPlay() {
               </span>
             </div>
 
-            {/* per question timer */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-white/10 bg-white/5">
               <span className="font-display text-xs tracking-[0.12em] text-white/55">
                 {qLeft}s
@@ -524,9 +564,9 @@ export default function DuelPlay() {
                 background: `linear-gradient(180deg, ${theme.headerFrom}, ${theme.headerTo})`,
               }}
             >
+              {/* ✅ FIX JSX: on ferme bien ce div */}
               <div className="flex items-start justify-between gap-6">
                 <div className="flex items-start gap-6">
-                  {/* image thème sans encadré */}
                   <img
                     src={theme.image}
                     alt={theme.label}
@@ -547,16 +587,21 @@ export default function DuelPlay() {
                   </div>
                 </div>
 
-                <div className="text-right">
+                <div className="text-right flex flex-col items-end gap-2">
                   <div className="font-display tracking-[0.14em] text-xs text-white/70">
                     QUESTION {index + 1} / {cfg.totalQuestions}
                   </div>
-                  <div className="mt-2 font-display text-xs text-white/60">
+
+                  <div className="font-display text-xs text-white/60">
                     {progressPct}%
                   </div>
+
+                  {/* ✅ difficulté élégante */}
+                  <DifficultyStones points={card.points || 1} src={pierreOr} />
                 </div>
               </div>
 
+              {/* ✅ barre de progression en dehors du flex */}
               <div className="mt-6 h-2 rounded-full bg-black/25 overflow-hidden border border-white/10">
                 <div
                   className="h-full"

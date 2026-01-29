@@ -27,6 +27,9 @@ import SettingsPage from "./pages/SettingsPage";
 
 import { db } from "./firebase";
 import { ref, set } from "firebase/database";
+import GameRulesCollectif from "./pages/GameRulesCollectif";
+
+
 
 export default function App() {
   // ✅ TEST TEMPORAIRE : écriture RTDB (à enlever après)
@@ -69,6 +72,10 @@ export default function App() {
 
       <Route path="/preparation" element={<Preparation />} />
       <Route path="/preparation/exam/:examKey" element={<PreparationExam />} />
+      
+      <Route path="/collectif/regles" element={<GameRulesCollectif />} />
+
+
 
       <Route path="*" element={<div style={{ color: "white", padding: 40 }}>404</div>} />
     </Routes>

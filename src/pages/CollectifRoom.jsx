@@ -275,6 +275,24 @@ function ActionBanner({ room }) {
   );
 }
 
+/* ✅ Firebase peut stocker "cells" sous forme d'objet (0..65) au lieu d'un array */
+function normalizeCells(rawCells, size) {
+  if (Array.isArray(rawCells)) return rawCells;
+
+  if (rawCells && typeof rawCells === "object") {
+    const arr = Object.keys(rawCells)
+      .sort((a, b) => Number(a) - Number(b))
+      .map((k) => rawCells[k]);
+    if (arr.length) return arr;
+  }
+
+  return Array.from({ length: size }).map((_, i) => ({
+    index: i,
+    type: i === 0 ? "start" : i === size - 1 ? "arrivee" : "question",
+    theme: "symboles",
+  }));
+}
+
 export default function CollectifRoom() {
   const { roomId } = useParams();
   const playerId = useMemo(() => getPlayerId(), []);
@@ -295,33 +313,30 @@ export default function CollectifRoom() {
   }, [roomId]);
 
   useEffect(() => {
-    const t = setInterval(
-      () => heartbeat({ roomId, playerId }),
-      10000
-    );
+    const t = setInterval(() => heartbeat({ roomId, playerId }), 10000);
     return () => clearInterval(t);
   }, [roomId, playerId]);
 
- // timer
-useEffect(() => {
-  const status = room?.state?.qStatus || "idle";
-  const endsAt = room?.state?.qEndsAt || 0;
+  // timer
+  useEffect(() => {
+    const status = room?.state?.qStatus || "idle";
+    const endsAt = room?.state?.qEndsAt || 0;
 
-  if (status !== "running" || !endsAt) {
-    setQLeft(0);
-    return;
-  }
+    if (status !== "running" || !endsAt) {
+      setQLeft(0);
+      return;
+    }
 
-  // ✅ set immédiat (sinon qLeft reste 0 un instant -> bug)
-  const computeLeft = () => Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
-  setQLeft(computeLeft());
-
-  const interval = setInterval(() => {
+    const computeLeft = () =>
+      Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
     setQLeft(computeLeft());
-  }, 250);
 
-  return () => clearInterval(interval);
-}, [room?.state?.qStatus, room?.state?.qEndsAt]);
+    const interval = setInterval(() => {
+      setQLeft(computeLeft());
+    }, 250);
+
+    return () => clearInterval(interval);
+  }, [room?.state?.qStatus, room?.state?.qEndsAt]);
 
   // reset pick on new question/turn
   useEffect(() => {
@@ -336,22 +351,20 @@ useEffect(() => {
   ]);
 
   // host: auto-finish when time is truly over (based on endsAt)
-useEffect(() => {
-  const status = room?.state?.qStatus || "idle";
-  const endsAt = room?.state?.qEndsAt || 0;
-  const isHost = room?.meta?.hostId === playerId;
+  useEffect(() => {
+    const status = room?.state?.qStatus || "idle";
+    const endsAt = room?.state?.qEndsAt || 0;
+    const isHost = room?.meta?.hostId === playerId;
 
-  if (!isHost) return;
-  if (status !== "running" || !endsAt) return;
+    if (!isHost) return;
+    if (status !== "running" || !endsAt) return;
 
-  // ✅ on ne se base pas sur qLeft (UI), mais sur l'horodatage réel
-  if (Date.now() >= endsAt) {
-    if (finishingRef.current) return;
-    finishingRef.current = true;
-    finishQuestion(roomId);
-  }
-}, [roomId, playerId, room?.meta?.hostId, room?.state?.qStatus, room?.state?.qEndsAt]);
-
+    if (Date.now() >= endsAt) {
+      if (finishingRef.current) return;
+      finishingRef.current = true;
+      finishQuestion(roomId);
+    }
+  }, [roomId, playerId, room?.meta?.hostId, room?.state?.qStatus, room?.state?.qEndsAt]);
 
   // host: consume moveRequest
   useEffect(() => {
@@ -408,27 +421,22 @@ useEffect(() => {
   /* =========================
      RENDER
      ========================= */
-  if (!room)
+  if (!room) {
     return (
       <div className="min-h-screen bg-[#0B1120] text-white p-8">
         Chargement…
       </div>
     );
+  }
 
-  const playersEntries = room?.players
-    ? Object.entries(room.players)
-    : [];
+  const playersEntries = room?.players ? Object.entries(room.players) : [];
   const positions = room?.board?.positions || {};
 
   const phase = room?.state?.phase || "lobby";
   const isHost = room?.meta?.hostId === playerId;
 
-  const turnPlayerId =
-    room?.state?.turnPlayerId || room?.meta?.hostId;
-
-  // pendant une question, l’acteur = currentActorId
-  const actorId =
-    room?.state?.currentActorId || turnPlayerId;
+  const turnPlayerId = room?.state?.turnPlayerId || room?.meta?.hostId;
+  const actorId = room?.state?.currentActorId || turnPlayerId;
 
   const isMyTurnRoll = turnPlayerId === playerId;
   const isMyTurnAnswer = actorId === playerId;
@@ -437,59 +445,35 @@ useEffect(() => {
   const card = room?.state?.qCard || null;
 
   const initiativeRolls = room?.state?.initiativeRolls || {};
-  const turnOrder = Array.isArray(room?.state?.turnOrder)
-    ? room.state.turnOrder
-    : [];
-
-  const cells = Array.isArray(room?.board?.cells)
-    ? room.board.cells
-    : Array.from({ length: 66 }).map((_, i) => ({
-        index: i,
-        type: i === 0 ? "start" : i === 65 ? "arrivee" : "question",
-        theme: "symboles",
-      }));
+  const turnOrder = Array.isArray(room?.state?.turnOrder) ? room.state.turnOrder : [];
 
   const size = Number(room?.board?.size || 66);
 
-  const connectedIds = playersEntries
-    .filter(([, p]) => p?.connected)
-    .map(([id]) => id);
+  // ✅ FIX IMPORTANT: pas de hook ici -> pas de crash
+  const cells = normalizeCells(room?.board?.cells, size);
+
+  const connectedIds = playersEntries.filter(([, p]) => p?.connected).map(([id]) => id);
   const allRolled =
     connectedIds.length > 0 &&
-    connectedIds.every(
-      (id) => typeof initiativeRolls[id] === "number"
-    );
+    connectedIds.every((id) => typeof initiativeRolls[id] === "number");
 
   const themeKey = (card?.theme || "mix").toLowerCase();
   const theme = THEME_CONFIG[themeKey] || THEME_CONFIG.mix;
 
   const turnStage = room?.state?.turnStage || "roll";
 
-  const canRoll =
-    phase === "playing" &&
-    isMyTurnRoll &&
-    turnStage === "roll" &&
-    qStatus === "idle";
-
-  const canAnswer =
-    phase === "playing" &&
-    qStatus === "running" &&
-    isMyTurnAnswer;
+  const canRoll = phase === "playing" && isMyTurnRoll && turnStage === "roll" && qStatus === "idle";
+  const canAnswer = phase === "playing" && qStatus === "running" && isMyTurnAnswer;
 
   const myInitiative = initiativeRolls[playerId];
   const turnOrderNames = turnOrder.map((id) => {
     const p = room?.players?.[id];
-    return {
-      id,
-      name: p?.name || id.slice(0, 6),
-      connected: !!p?.connected,
-    };
+    return { id, name: p?.name || id.slice(0, 6), connected: !!p?.connected };
   });
 
   const lastMove = room?.state?.lastMove;
   const lastMoveName = lastMove?.playerId
-    ? room?.players?.[lastMove.playerId]?.name ||
-      lastMove.playerId.slice(0, 6)
+    ? room?.players?.[lastMove.playerId]?.name || lastMove.playerId.slice(0, 6)
     : null;
 
   /* =========================
@@ -530,13 +514,10 @@ useEffect(() => {
   };
 
   const answerClass = (i) => {
-    const base =
-      "border-white/10 bg-[#0B1120]/35 hover:border-white/20 hover:bg-white/5";
-    if (!canAnswer)
-      return "border-white/10 bg-[#0B1120]/35 opacity-70";
+    const base = "border-white/10 bg-[#0B1120]/35 hover:border-white/20 hover:bg-white/5";
+    if (!canAnswer) return "border-white/10 bg-[#0B1120]/35 opacity-70";
     const picked = localPick === i;
-    if (picked)
-      return "border-[#D4AF37]/35 bg-[#D4AF37]/10";
+    if (picked) return "border-[#D4AF37]/35 bg-[#D4AF37]/10";
     return base;
   };
 
@@ -546,20 +527,13 @@ useEffect(() => {
         {/* top bar */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="font-display text-2xl">
-              {room.meta?.name || "Partie"}
-            </div>
-            <div className="text-white/50 text-sm">
-              RoomId: {roomId}
-            </div>
-            <div className="text-white/50 text-sm">
-              Phase: {phase}
-            </div>
+            <div className="font-display text-2xl">{room.meta?.name || "Partie"}</div>
+            <div className="text-white/50 text-sm">RoomId: {roomId}</div>
+            <div className="text-white/50 text-sm">Phase: {phase}</div>
             <div className="text-white/50 text-sm">
               Tour :{" "}
               <span className="text-[#D4AF37]">
-                {room?.players?.[turnPlayerId]?.name ||
-                  turnPlayerId}
+                {room?.players?.[turnPlayerId]?.name || turnPlayerId}
               </span>
             </div>
           </div>
@@ -601,11 +575,6 @@ useEffect(() => {
                         ? "bg-white/10 text-white/30 cursor-not-allowed border-white/10"
                         : "bg-[#D4AF37] text-black border-[#D4AF37]/30",
                     ].join(" ")}
-                    title={
-                      !allRolled
-                        ? "Attends que tous les joueurs lancent le dé"
-                        : "Valider l’ordre de jeu"
-                    }
                   >
                     VALIDER L’ORDRE
                   </button>
@@ -623,11 +592,6 @@ useEffect(() => {
                     ? "bg-white/10 text-white/30 cursor-not-allowed border-white/10"
                     : "bg-[#D4AF37] text-black border-[#D4AF37]/30",
                 ].join(" ")}
-                title={
-                  !isMyTurnRoll
-                    ? "Ce n’est pas ton tour"
-                    : "Lancer le dé"
-                }
               >
                 LANCER LE DÉ
               </button>
@@ -644,34 +608,20 @@ useEffect(() => {
                 PLATEAU (66)
               </div>
 
-              {/* animation dé */}
               <div className="text-xs text-white/45 flex items-center gap-3">
                 <AnimatePresence mode="popLayout">
                   {lastMove?.die ? (
                     <motion.div
                       key={lastMove.at}
-                      initial={{
-                        opacity: 0,
-                        y: -8,
-                        scale: 0.9,
-                      }}
-                      animate={{
-                        opacity: 1,
-                        y: 0,
-                        scale: 1,
-                      }}
-                      exit={{
-                        opacity: 0,
-                        y: 8,
-                      }}
+                      initial={{ opacity: 0, y: -8, scale: 0.9 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8 }}
                       transition={{ duration: 0.25 }}
                       className="px-3 py-1 rounded-full border border-white/10 bg-black/20"
                       title="Dernier lancer"
                     >
                       🎲 {lastMoveName} :{" "}
-                      <span className="text-[#D4AF37]">
-                        {lastMove.die}
-                      </span>
+                      <span className="text-[#D4AF37]">{lastMove.die}</span>
                     </motion.div>
                   ) : null}
                 </AnimatePresence>
@@ -683,10 +633,7 @@ useEffect(() => {
                 const cell = cells[i];
                 const cellPlayers = playersEntries
                   .filter(([id]) => (positions[id] ?? 0) === i)
-                  .map(
-                    ([, p]) =>
-                      p?.name?.[0]?.toUpperCase() || "?"
-                  );
+                  .map(([, p]) => p?.name?.[0]?.toUpperCase() || "?");
 
                 return (
                   <div
@@ -695,9 +642,7 @@ useEffect(() => {
                       "h-12 rounded-md border flex items-center justify-center text-[11px] text-white/70 relative select-none",
                       cellStyle(cell),
                     ].join(" ")}
-                    title={`case ${i} · ${cell?.type}${
-                      cell?.theme ? " · " + cell.theme : ""
-                    }`}
+                    title={`case ${i} · ${cell?.type}${cell?.theme ? " · " + cell.theme : ""}`}
                   >
                     <div className="absolute top-1 left-1 text-[10px] text-white/50">
                       {cellLabel(cell)}
@@ -727,7 +672,6 @@ useEffect(() => {
 
           {/* RIGHT */}
           <div className="space-y-6">
-            {/* résultats / cases spéciales */}
             <ActionBanner room={room} />
 
             {/* players */}
@@ -742,41 +686,19 @@ useEffect(() => {
                   const isTurn = turnPlayerId === id;
 
                   return (
-                    <div
-                      key={id}
-                      className="flex items-center justify-between"
-                    >
+                    <div key={id} className="flex items-center justify-between">
                       <div className="text-white/85">
-                        {p?.name || "?"}{" "}
-                        <span className="text-white/40">
-                          ({p?.grade})
-                        </span>
-                        {id === playerId ? (
-                          <span className="ml-2 text-[#D4AF37]">
-                            • toi
-                          </span>
-                        ) : null}
-                        {id === room?.meta?.hostId ? (
-                          <span className="ml-2 text-white/35">
-                            • host
-                          </span>
-                        ) : null}
-                        {phase === "initiative" &&
-                        typeof roll === "number" ? (
-                          <span className="ml-2 text-white/50">
-                            • 🎲 {roll}
-                          </span>
+                        {p?.name || "?"} <span className="text-white/40">({p?.grade})</span>
+                        {id === playerId ? <span className="ml-2 text-[#D4AF37]">• toi</span> : null}
+                        {id === room?.meta?.hostId ? <span className="ml-2 text-white/35">• host</span> : null}
+                        {phase === "initiative" && typeof roll === "number" ? (
+                          <span className="ml-2 text-white/50">• 🎲 {roll}</span>
                         ) : null}
                       </div>
 
                       <div className="text-white/40 text-sm">
-                        pos: {positions[id] ?? 0}{" "}
-                        {p?.connected ? "🟢" : "⚫️"}
-                        {isTurn ? (
-                          <span className="ml-2 text-[#D4AF37]">
-                            ◀ tour
-                          </span>
-                        ) : null}
+                        pos: {positions[id] ?? 0} {p?.connected ? "🟢" : "⚫️"}
+                        {isTurn ? <span className="ml-2 text-[#D4AF37]">◀ tour</span> : null}
                       </div>
                     </div>
                   );
@@ -836,10 +758,7 @@ useEffect(() => {
                   <div className="text-right flex flex-col items-end gap-2">
                     <DifficultyPips points={card?.points || 1} />
                     <div className="px-3 py-1 rounded-full border border-white/15 bg-black/20 font-display tracking-[0.14em] text-xs text-white/80">
-                      ⏱{" "}
-                      {qStatus === "running"
-                        ? `${qLeft}s`
-                        : "—"}
+                      ⏱ {qStatus === "running" ? `${qLeft}s` : "—"}
                     </div>
                   </div>
                 </div>
@@ -849,12 +768,9 @@ useEffect(() => {
                 {phase === "initiative" ? (
                   <div className="text-white/55 font-body text-sm">
                     <div className="mb-2">
-                      🎲 Chaque joueur lance le dé (score unique 1
-                      à 6).
+                      🎲 Chaque joueur lance le dé (score unique 1 à 6).
                     </div>
-                    <div>
-                      Le host validera ensuite l’ordre de jeu.
-                    </div>
+                    <div>Le host validera ensuite l’ordre de jeu.</div>
                   </div>
                 ) : !card ? (
                   <div className="text-white/55 font-body text-sm">
@@ -901,9 +817,7 @@ useEffect(() => {
                               <span className="font-display text-[#D4AF37]/80 w-6">
                                 {i + 1}.
                               </span>
-                              <span className="text-white/80">
-                                {a}
-                              </span>
+                              <span className="text-white/80">{a}</span>
                             </div>
                             {localPick === i ? (
                               <span className="text-[#D4AF37] font-display">
@@ -918,14 +832,10 @@ useEffect(() => {
                     {isMyTurnAnswer && (
                       <button
                         onClick={validate}
-                        disabled={
-                          !canAnswer ||
-                          typeof localPick !== "number"
-                        }
+                        disabled={!canAnswer || typeof localPick !== "number"}
                         className={[
                           "mt-5 w-full rounded-md py-3 font-display tracking-[0.12em]",
-                          !canAnswer ||
-                          typeof localPick !== "number"
+                          !canAnswer || typeof localPick !== "number"
                             ? "bg-white/10 text-white/30 cursor-not-allowed border border-white/10"
                             : "bg-[#D4AF37] text-black border border-[#D4AF37]/30 hover:brightness-110 shadow-[0_0_26px_rgba(212,175,55,0.18)]",
                         ].join(" ")}
@@ -950,8 +860,8 @@ useEffect(() => {
 
         {/* debug */}
         <div className="text-center text-white/25 text-xs">
-          phase: {phase} · qStatus: {qStatus} · host:{" "}
-          {isHost ? "oui" : "non"} · turnStage: {turnStage}
+          phase: {phase} · qStatus: {qStatus} · host: {isHost ? "oui" : "non"} ·
+          turnStage: {turnStage}
         </div>
       </div>
     </div>

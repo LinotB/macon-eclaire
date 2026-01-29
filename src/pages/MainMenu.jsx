@@ -1,3 +1,4 @@
+// src/pages/MainMenu.jsx
 import { useCharacter } from "../context/CharacterContext";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
@@ -19,7 +20,7 @@ export default function MainMenu() {
 
   const handleModeSelect = (modeId) => {
     const pageMap = {
-      collectif: "/game-board",
+      collectif: "/collectif/regles", // ✅ avant: "/game-board"
       duel: "/duel",
       revision: "/revision",
       preparation: "/preparation",
@@ -27,13 +28,11 @@ export default function MainMenu() {
     navigate(pageMap[modeId]);
   };
 
-  // (plus tard tu brancheras ça à ton state / backend)
   const { character } = useCharacter();
 
   const pseudo = character.pseudo || "Initié";
   const rite = character.rite || "Rite non défini";
   const grade = character.grade || "Apprenti";
-
 
   const stats = [
     { value: "12", label: "Parties" },
@@ -93,39 +92,36 @@ export default function MainMenu() {
           </div>
 
           <div className="flex items-center gap-4 text-white/45">
-          <button
-            type="button"
-            onClick={() => navigate("/profile")}
-            className="hover:text-white/70 transition"
-            aria-label="Profil"
-            title="Profil"
-          >
-            <User size={18} />
-          </button>
+            <button
+              type="button"
+              onClick={() => navigate("/profile")}
+              className="hover:text-white/70 transition"
+              aria-label="Profil"
+              title="Profil"
+            >
+              <User size={18} />
+            </button>
 
-          <button
-            type="button"
-            onClick={() => navigate("/stats")}
-            className="hover:text-white/70 transition"
-            aria-label="Stats"
-            title="Stats"
-          >
-            <BarChart3 size={18} />
-          </button>
+            <button
+              type="button"
+              onClick={() => navigate("/stats")}
+              className="hover:text-white/70 transition"
+              aria-label="Stats"
+              title="Stats"
+            >
+              <BarChart3 size={18} />
+            </button>
 
-
-
-          <button
-            type="button"
-            onClick={() => navigate("/settings")}
-            className="hover:text-white/70 transition"
-            aria-label="Paramètres"
-            title="Paramètres"
-          >
-            <Settings size={18} />
-          </button>
-        </div>
-
+            <button
+              type="button"
+              onClick={() => navigate("/settings")}
+              className="hover:text-white/70 transition"
+              aria-label="Paramètres"
+              title="Paramètres"
+            >
+              <Settings size={18} />
+            </button>
+          </div>
         </div>
       </header>
 

@@ -23,3 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+public/models/collectif_board.glb
+public/models/male_walk/Walking.fbx
+board-game/trush/
+*.blend
+*.psd

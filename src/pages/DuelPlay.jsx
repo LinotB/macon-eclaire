@@ -16,6 +16,9 @@ import themeMix from "../assets/themes/mix.png";
 import { useProgress } from "../context/ProgressContext";
 import pierreOr from "../assets/ui/pierre-or.png";
 
+// ✅ banque centralisée
+import { getQuestions } from "../data/questions";
+
 // -------------------------
 // Config duel
 // -------------------------
@@ -89,112 +92,12 @@ const THEME_CONFIG = {
 };
 
 // -------------------------
-// Banque de questions (démo)
-// -------------------------
-const BANK = [
-  {
-    id: "sym-1",
-    theme: "symboles",
-    title: "QUESTION",
-    points: 2,
-    question:
-      "Que symbolisent principalement l’équerre et le compas en franc-maçonnerie ?",
-    answers: [
-      "La hiérarchie et le pouvoir au sein de la loge",
-      "La mesure, la rectitude et la maîtrise de soi",
-      "L’appartenance à un ordre ancien",
-      "La transmission des secrets opératifs",
-    ],
-    correctIndexes: [1],
-    feedback:
-      "L’équerre et le compas renvoient classiquement à la rectitude, la mesure, l’équilibre et le travail intérieur.",
-  },
-  {
-    id: "rit-1",
-    theme: "rituels",
-    title: "QUESTION",
-    points: 3,
-    question:
-      "Dans un cadre rituel, à quoi sert principalement la répétition des gestes et des paroles ?",
-    answers: [
-      "À accélérer la cérémonie",
-      "À créer un cadre symbolique et mémoriel",
-      "À divertir l’assemblée",
-      "À remplacer l’étude personnelle",
-    ],
-    correctIndexes: [1],
-    feedback:
-      "La répétition structure l’attention, renforce la mémoire symbolique et installe un rythme propice à l’intériorisation.",
-  },
-  {
-    id: "his-1",
-    theme: "histoire",
-    title: "QUESTION",
-    points: 1,
-    question:
-      "Quel est l’intérêt d’étudier l’histoire des courants initiatiques et des loges ?",
-    answers: [
-      "Accumuler des dates",
-      "Comprendre l’évolution des idées et des pratiques",
-      "Remplacer l’expérience vécue",
-      "Éviter toute diversité de points de vue",
-    ],
-    correctIndexes: [1],
-    feedback:
-      "L’histoire aide à contextualiser les pratiques et à comprendre les influences culturelles et philosophiques au fil du temps.",
-  },
-  {
-    id: "reg-1",
-    theme: "reglement",
-    title: "QUESTION",
-    points: 2,
-    question:
-      "À quoi sert principalement un règlement intérieur dans une organisation ?",
-    answers: [
-      "À décourager les nouveaux",
-      "À clarifier le cadre commun et les règles de fonctionnement",
-      "À supprimer toute liberté individuelle",
-      "À remplacer les décisions collectives",
-    ],
-    correctIndexes: [1],
-    feedback:
-      "Un règlement intérieur fixe un cadre clair : rôles, procédures, règles de vie commune et principes de fonctionnement.",
-  },
-  {
-    id: "def-1",
-    theme: "defis",
-    title: "DÉFI",
-    points: 2,
-    question:
-      "Choisissez les affirmations correctes : un défi initiatique personnel vise surtout à…",
-    answers: [
-      "Se comparer aux autres",
-      "Travailler une discipline et une introspection concrète",
-      "Gagner uniquement des récompenses",
-      "Observer ses réactions et progresser",
-    ],
-    correctIndexes: [1, 3],
-    feedback:
-      "L’objectif est l’effort intérieur : discipline, constance, observation de soi et progression personnelle.",
-  },
-];
-
-// -------------------------
 // Helpers
 // -------------------------
 function fmtTime(s) {
   const m = Math.floor(s / 60);
   const r = s % 60;
   return `${m}:${String(r).padStart(2, "0")}`;
-}
-
-function shuffle(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
 }
 
 /**
@@ -206,8 +109,7 @@ function shuffle(arr) {
 function DifficultyStones({ points = 1, src }) {
   const n = Math.max(1, Math.min(3, Number(points) || 1));
 
-  const label =
-    n === 1 ? "FACILE" : n === 2 ? "INTERMÉDIAIRE" : "DIFFICILE";
+  const label = n === 1 ? "FACILE" : n === 2 ? "INTERMÉDIAIRE" : "DIFFICILE";
 
   return (
     <div className="inline-flex items-center gap-3">
@@ -274,18 +176,45 @@ export default function DuelPlay() {
   // ✅ évite recordDuelFinished multiple
   const [resultSaved, setResultSaved] = useState(false);
 
-  // ✅ banque de cartes pour CE duel
+  // ✅ banque de cartes pour CE duel (depuis src/data/questions)
   const cards = useMemo(() => {
-    const pool = shuffle(BANK);
-    return pool.slice(0, cfg.totalQuestions);
+    // difficulté: quick=1, standard=2, challenge=3 (tu peux ajuster)
+    const difficulty =
+      duelId === "quick" ? 1 : duelId === "standard" ? 2 : 3;
+
+    const list = getQuestions({
+      theme: "mix", // duel = mix (tu peux mettre une thématique spécifique si besoin)
+      difficulty,
+      count: cfg.totalQuestions,
+      shuffle: true,
+    });
+
+    // fallback si ta banque est vide
+    if (!list || list.length === 0) {
+      return [
+        {
+          id: `fallback-${Date.now()}`,
+          theme: "symboles",
+          title: "QUESTION",
+          points: 1,
+          question:
+            "Aucune question trouvée dans la banque (src/data/questions). Ajoute des questions et relance.",
+          answers: ["OK"],
+          correctIndexes: [0],
+          feedback: "Ajoute des questions dans src/data/questions/<theme>.<difficulty>.js",
+        },
+      ];
+    }
+
+    return list;
   }, [cfg.totalQuestions, duelId]);
 
   const [index, setIndex] = useState(0);
   const card = cards[index];
 
   // ✅ thème de la carte
-  const themeKey = (card?.theme || "symboles").toLowerCase();
-  const theme = THEME_CONFIG[themeKey] || THEME_CONFIG.symboles;
+  const themeKey = (card?.theme || "mix").toLowerCase();
+  const theme = THEME_CONFIG[themeKey] || THEME_CONFIG.mix;
 
   // ✅ chrono par question
   const perQuestionSeconds = useMemo(() => {
@@ -398,7 +327,14 @@ export default function DuelPlay() {
 
     recordDuelFinished({ won: win, xpBonus, rewardId });
     setResultSaved(true);
-  }, [finished, resultSaved, correctCount, wrongCount, duelId, recordDuelFinished]);
+  }, [
+    finished,
+    resultSaved,
+    correctCount,
+    wrongCount,
+    duelId,
+    recordDuelFinished,
+  ]);
 
   // ✅ quand finished = true => on va sur la page result
   useEffect(() => {
@@ -442,7 +378,6 @@ export default function DuelPlay() {
 
     const user = pickedSet;
 
-    // ✅ FIX: calcul correct, puis recordAnswer après
     const allCorrectPicked =
       user.size > 0 &&
       user.size === correctSet.size &&
@@ -551,7 +486,7 @@ export default function DuelPlay() {
       <main className="relative z-10 px-6 pb-24">
         <div className="max-w-6xl mx-auto">
           <motion.div
-            key={card.id}
+            key={card?.id || index}
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45 }}
@@ -564,7 +499,6 @@ export default function DuelPlay() {
                 background: `linear-gradient(180deg, ${theme.headerFrom}, ${theme.headerTo})`,
               }}
             >
-              {/* ✅ FIX JSX: on ferme bien ce div */}
               <div className="flex items-start justify-between gap-6">
                 <div className="flex items-start gap-6">
                   <img
@@ -576,7 +510,7 @@ export default function DuelPlay() {
 
                   <div>
                     <div className="font-display tracking-[0.22em] text-2xl md:text-3xl text-white/95">
-                      {card.title}
+                      {card?.title || "QUESTION"}
                     </div>
 
                     <div className="mt-3 h-px w-64 bg-gradient-to-r from-transparent via-[#D4AF37]/60 to-transparent" />
@@ -596,12 +530,10 @@ export default function DuelPlay() {
                     {progressPct}%
                   </div>
 
-                  {/* ✅ difficulté élégante */}
-                  <DifficultyStones points={card.points || 1} src={pierreOr} />
+                  <DifficultyStones points={card?.points || 1} src={pierreOr} />
                 </div>
               </div>
 
-              {/* ✅ barre de progression en dehors du flex */}
               <div className="mt-6 h-2 rounded-full bg-black/25 overflow-hidden border border-white/10">
                 <div
                   className="h-full"
@@ -617,11 +549,11 @@ export default function DuelPlay() {
             {/* Content */}
             <div className="px-10 py-10">
               <div className="font-body text-lg md:text-xl text-white/80 italic mb-8">
-                {card.question}
+                {card?.question}
               </div>
 
               <div className="space-y-4">
-                {card.answers.map((a, i) => {
+                {(card?.answers || []).map((a, i) => {
                   const isCorrect = revealed && correctSet.has(i);
                   const isPicked = revealed
                     ? isMulti
@@ -698,7 +630,7 @@ export default function DuelPlay() {
                       <Swords size={18} />
                     </div>
                     <p className="font-body text-sm text-[#D4AF37]/80">
-                      {card.feedback}
+                      {card?.feedback}
                     </p>
                   </div>
                 </motion.div>

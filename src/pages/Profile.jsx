@@ -21,6 +21,7 @@ export default function Profile() {
   const navigate = useNavigate();
   const { character } = useCharacter();
   const { stats } = useProgress();
+  
 
   // ✅ infos utilisateur réelles
   const pseudo = character?.pseudo || "Initié";
@@ -29,7 +30,7 @@ export default function Profile() {
 
   // ✅ avatar (si tu as un champ avatar dans ton character, branche-le ici)
   // ex: const avatarUrl = character?.avatarUrl;
-  const avatarUrl = character?.avatarUrl || null;
+  const avatarUrl = character?.avatarPng || character?.avatarUrl || null;
 
   // ✅ thématiques officielles
   const themes = useMemo(

@@ -26,6 +26,12 @@ import themeRituels from "../assets/themes/rituels.png";
 import themeHistoire from "../assets/themes/histoire.png";
 import themeReglement from "../assets/themes/reglement.png";
 import themeDefis from "../assets/themes/defis.png";
+import themeMix from "../assets/themes/mix.png";
+
+import CollectifBoard3D from "../components/board3d/CollectifBoard3D";
+
+// ✅ banque centralisée
+import { getQuestions } from "../data/questions"; // <-- NEW (au lieu de getRandomQuestion)
 
 const THEME_CONFIG = {
   symboles: {
@@ -62,101 +68,13 @@ const THEME_CONFIG = {
     label: "QUIZ SURPRISE",
     headerFrom: "#1F2937",
     headerTo: "#0B1220",
-    image: themeSymboles,
+    image: themeMix || themeSymboles,
   },
 };
 
-// mini bank prototype
-const BANK = [
-  {
-    id: "sym-1",
-    theme: "symboles",
-    title: "QUESTION",
-    points: 1,
-    question: "Que symbolisent principalement l’équerre et le compas ?",
-    answers: [
-      "La hiérarchie et le pouvoir",
-      "La mesure, la rectitude et la maîtrise de soi",
-      "L’appartenance à un ordre ancien",
-      "La transmission des secrets opératifs",
-    ],
-    correctIndexes: [1],
-    feedback: "Classiquement : rectitude, mesure, équilibre, travail intérieur.",
-  },
-  {
-    id: "rit-1",
-    theme: "rituels",
-    title: "QUESTION",
-    points: 2,
-    question: "À quoi sert surtout la répétition des gestes et paroles ?",
-    answers: [
-      "À accélérer la cérémonie",
-      "À créer un cadre symbolique et mémoriel",
-      "À divertir l’assemblée",
-      "À remplacer l’étude personnelle",
-    ],
-    correctIndexes: [1],
-    feedback: "Elle structure l’attention et l’intériorisation.",
-  },
-  {
-    id: "his-1",
-    theme: "histoire",
-    title: "QUESTION",
-    points: 3,
-    question: "Pourquoi étudier l’histoire des loges ?",
-    answers: [
-      "Accumuler des dates",
-      "Comprendre l’évolution des idées et des pratiques",
-      "Remplacer l’expérience vécue",
-      "Éviter la diversité",
-    ],
-    correctIndexes: [1],
-    feedback: "Contextualiser les pratiques et influences au fil du temps.",
-  },
-  {
-    id: "reg-1",
-    theme: "reglement",
-    title: "QUESTION",
-    points: 2,
-    question: "Quel est l’objectif principal d’un règlement intérieur ?",
-    answers: [
-      "Imposer une hiérarchie stricte",
-      "Encadrer l’organisation et les pratiques",
-      "Remplacer les statuts",
-      "Éviter toute évolution",
-    ],
-    correctIndexes: [1],
-    feedback:
-      "Il encadre le fonctionnement concret, en complément des statuts.",
-  },
-  {
-    id: "def-1",
-    theme: "defis",
-    title: "DÉFI",
-    points: 2,
-    question:
-      "Défi posture : tiens une posture 10 secondes (simulation). Réussite ?",
-    answers: ["Oui", "Non"],
-    correctIndexes: [0],
-    feedback: "Défi validé si l’équipe juge que c’est réussi.",
-  },
-];
-
-function pickRandomCard(themeMaybe) {
-  if (themeMaybe) {
-    const filtered = BANK.filter(
-      (c) => (c.theme || "").toLowerCase() === themeMaybe.toLowerCase()
-    );
-    if (filtered.length)
-      return filtered[Math.floor(Math.random() * filtered.length)];
-  }
-  return BANK[Math.floor(Math.random() * BANK.length)];
-}
-
 function DifficultyPips({ points = 1 }) {
   const n = Math.max(1, Math.min(3, Number(points) || 1));
-  const label =
-    n === 1 ? "FACILE" : n === 2 ? "INTERMÉDIAIRE" : "DIFFICILE";
+  const label = n === 1 ? "FACILE" : n === 2 ? "INTERMÉDIAIRE" : "DIFFICILE";
 
   return (
     <div className="inline-flex items-center gap-3">
@@ -184,68 +102,23 @@ function DifficultyPips({ points = 1 }) {
   );
 }
 
-/* =========================
-   Helpers UI plateau
-   ========================= */
-function cellStyle(cell) {
-  if (!cell) return "bg-black/20 border-white/10";
-  if (cell.type === "start") return "bg-emerald-500/15 border-emerald-400/20";
-  if (cell.type === "arrivee") return "bg-[#D4AF37]/15 border-[#D4AF37]/25";
-  if (cell.type === "evenement")
-    return "bg-sky-500/15 border-sky-400/20";
-  if (cell.type === "cabinet")
-    return "bg-slate-500/15 border-slate-300/15";
-  if (cell.type === "augmentation")
-    return "bg-orange-500/15 border-orange-400/20";
-  if (cell.type === "quiz")
-    return "bg-gradient-to-br from-[#5B2A86]/20 via-[#1E3A8A]/20 to-[#14532D]/20 border-white/15";
-  if (cell.type === "defi") return "bg-red-500/15 border-red-400/20";
-
-  const t = (cell.theme || "").toLowerCase();
-  if (t === "symboles")
-    return "bg-purple-500/15 border-purple-300/15";
-  if (t === "rituels") return "bg-blue-500/15 border-blue-300/15";
-  if (t === "histoire")
-    return "bg-green-500/15 border-green-300/15";
-  if (t === "reglement")
-    return "bg-amber-500/15 border-amber-300/15";
-  if (t === "defis") return "bg-red-500/15 border-red-300/15";
-  return "bg-black/20 border-white/10";
-}
-
-function cellLabel(cell) {
-  if (!cell) return "";
-  if (cell.type === "start") return "D";
-  if (cell.type === "arrivee") return "A";
-  if (cell.type === "evenement") return "E";
-  if (cell.type === "cabinet") return "C";
-  if (cell.type === "augmentation") return "€";
-  if (cell.type === "quiz") return "Q";
-  if (cell.type === "defi") return "⚔";
-  return "";
-}
-
 function ActionBanner({ room }) {
   const a = room?.state?.lastAction;
   if (!a) return null;
 
   const name =
-    room?.players?.[a.playerId]?.name ||
-    a.playerId?.slice(0, 6) ||
-    "—";
+    room?.players?.[a.playerId]?.name || a.playerId?.slice(0, 6) || "—";
 
   let title = "Dernière action";
   let text = "";
 
   if (a.type === "question") {
     title = "Résultat";
-    if (a.outcome === "correct") {
+    if (a.outcome === "correct")
       text = `✅ ${name} : bonne réponse (+${a.delta})`;
-    } else if (a.outcome === "no_answer") {
+    else if (a.outcome === "no_answer")
       text = `⏱️ ${name} : pas de réponse (0)`;
-    } else {
-      text = `❌ ${name} : mauvaise réponse (+0)`;
-    }
+    else text = `❌ ${name} : mauvaise réponse (+0)`;
   } else if (a.type === "evenement") {
     title = "Événement";
     text =
@@ -293,6 +166,30 @@ function normalizeCells(rawCells, size) {
   }));
 }
 
+// ✅ difficulté par case (simple et modifiable)
+function difficultyFromCell(cell) {
+  const p = Number(cell?.points);
+  if (p === 1 || p === 2 || p === 3) return p;
+
+  if (cell?.type === "defi") return 3;
+  if (cell?.type === "quiz") return 2;
+  if (cell?.type === "question") return 2;
+
+  return 1;
+}
+
+// ✅ helper : pioche une question en évitant les doublons
+function pickUniqueQuestion({ theme, difficulty, usedIdsSet }) {
+  const pool = getQuestions({ theme, difficulty, count: 9999, shuffle: true });
+
+  // 1) essaie d'en trouver une jamais utilisée
+  const fresh = pool.find((q) => q?.id && !usedIdsSet.has(String(q.id)));
+  if (fresh) return fresh;
+
+  // 2) sinon fallback : accepte une répétition (si banque trop petite)
+  return pool[0] || null;
+}
+
 export default function CollectifRoom() {
   const { roomId } = useParams();
   const playerId = useMemo(() => getPlayerId(), []);
@@ -303,6 +200,10 @@ export default function CollectifRoom() {
 
   const finishingRef = useRef(false);
   const startingCardRef = useRef(false);
+
+  // ✅ anti-doublon LOCAL (par onglet / par client)
+  // Si tu veux l'anti-doublon "partagé" entre tous les joueurs, il faudra stocker un set côté RTDB (je te le fais après si tu veux).
+  const usedQuestionIdsRef = useRef(new Set());
 
   /* =========================
      HOOKS
@@ -350,6 +251,13 @@ export default function CollectifRoom() {
     room?.state?.qCard?.id,
   ]);
 
+  // ✅ quand une nouvelle carte arrive dans la room, on marque son id comme "utilisé"
+  useEffect(() => {
+    const id = room?.state?.qCard?.id;
+    if (!id) return;
+    usedQuestionIdsRef.current.add(String(id));
+  }, [room?.state?.qCard?.id]);
+
   // host: auto-finish when time is truly over (based on endsAt)
   useEffect(() => {
     const status = room?.state?.qStatus || "idle";
@@ -364,7 +272,13 @@ export default function CollectifRoom() {
       finishingRef.current = true;
       finishQuestion(roomId);
     }
-  }, [roomId, playerId, room?.meta?.hostId, room?.state?.qStatus, room?.state?.qEndsAt]);
+  }, [
+    roomId,
+    playerId,
+    room?.meta?.hostId,
+    room?.state?.qStatus,
+    room?.state?.qEndsAt,
+  ]);
 
   // host: consume moveRequest
   useEffect(() => {
@@ -396,14 +310,49 @@ export default function CollectifRoom() {
     if (startingCardRef.current) return;
     startingCardRef.current = true;
 
+    // ✅ determine theme + difficulty, puis pioche UNIQUE dans la banque centralisée
     let theme = "symboles";
-    if (cell?.type === "quiz") theme = pickQuizTheme();
+    if (cell?.type === "quiz") theme = pickQuizTheme(); // souvent "mix" ou un thème
     else if (cell?.type === "defi") theme = "defis";
     else if (cell?.type === "question")
       theme = (cell?.theme || "symboles").toLowerCase();
 
-    const nextCard = { ...pickRandomCard(theme), theme };
-    startQuestion(roomId, nextCard, 20);
+    const difficulty = difficultyFromCell(cell);
+
+    const picked = pickUniqueQuestion({
+      theme,
+      difficulty,
+      usedIdsSet: usedQuestionIdsRef.current,
+    });
+
+    // fallback si banque vide
+    const nextCard =
+      picked ||
+      {
+        id: `fallback-${Date.now()}`,
+        theme,
+        title: "QUESTION",
+        points: difficulty,
+        question:
+          "Aucune question trouvée dans la banque (src/data/questions). Ajoute des questions et relance.",
+        answers: ["OK"],
+        correctIndexes: [0],
+        feedback:
+          "Ajoute des questions dans src/data/questions/<theme>.<difficulty>.js",
+      };
+
+    // 🔁 points = difficulté si non défini
+    const cardWithPoints = {
+      ...nextCard,
+      theme,
+      points: nextCard.points || difficulty,
+    };
+
+    // ✅ marque l'id comme utilisé (pour éviter que le host repioche la même avant que la room reçoive la carte)
+    if (cardWithPoints?.id)
+      usedQuestionIdsRef.current.add(String(cardWithPoints.id));
+
+    startQuestion(roomId, cardWithPoints, 20);
   }, [room, playerId, roomId]);
 
   // host: consume finishRequest
@@ -445,14 +394,16 @@ export default function CollectifRoom() {
   const card = room?.state?.qCard || null;
 
   const initiativeRolls = room?.state?.initiativeRolls || {};
-  const turnOrder = Array.isArray(room?.state?.turnOrder) ? room.state.turnOrder : [];
+  const turnOrder = Array.isArray(room?.state?.turnOrder)
+    ? room.state.turnOrder
+    : [];
 
   const size = Number(room?.board?.size || 66);
-
-  // ✅ FIX IMPORTANT: pas de hook ici -> pas de crash
   const cells = normalizeCells(room?.board?.cells, size);
 
-  const connectedIds = playersEntries.filter(([, p]) => p?.connected).map(([id]) => id);
+  const connectedIds = playersEntries
+    .filter(([, p]) => p?.connected)
+    .map(([id]) => id);
   const allRolled =
     connectedIds.length > 0 &&
     connectedIds.every((id) => typeof initiativeRolls[id] === "number");
@@ -462,8 +413,13 @@ export default function CollectifRoom() {
 
   const turnStage = room?.state?.turnStage || "roll";
 
-  const canRoll = phase === "playing" && isMyTurnRoll && turnStage === "roll" && qStatus === "idle";
-  const canAnswer = phase === "playing" && qStatus === "running" && isMyTurnAnswer;
+  const canRoll =
+    phase === "playing" &&
+    isMyTurnRoll &&
+    turnStage === "roll" &&
+    qStatus === "idle";
+  const canAnswer =
+    phase === "playing" && qStatus === "running" && isMyTurnAnswer;
 
   const myInitiative = initiativeRolls[playerId];
   const turnOrderNames = turnOrder.map((id) => {
@@ -473,8 +429,11 @@ export default function CollectifRoom() {
 
   const lastMove = room?.state?.lastMove;
   const lastMoveName = lastMove?.playerId
-    ? room?.players?.[lastMove.playerId]?.name || lastMove.playerId.slice(0, 6)
+    ? room?.players?.[lastMove.playerId]?.name ||
+      lastMove.playerId.slice(0, 6)
     : null;
+
+  const activeIndex = Number(positions?.[turnPlayerId] ?? 0);
 
   /* =========================
      Actions
@@ -514,7 +473,8 @@ export default function CollectifRoom() {
   };
 
   const answerClass = (i) => {
-    const base = "border-white/10 bg-[#0B1120]/35 hover:border-white/20 hover:bg-white/5";
+    const base =
+      "border-white/10 bg-[#0B1120]/35 hover:border-white/20 hover:bg-white/5";
     if (!canAnswer) return "border-white/10 bg-[#0B1120]/35 opacity-70";
     const picked = localPick === i;
     if (picked) return "border-[#D4AF37]/35 bg-[#D4AF37]/10";
@@ -527,7 +487,9 @@ export default function CollectifRoom() {
         {/* top bar */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="font-display text-2xl">{room.meta?.name || "Partie"}</div>
+            <div className="font-display text-2xl">
+              {room.meta?.name || "Partie"}
+            </div>
             <div className="text-white/50 text-sm">RoomId: {roomId}</div>
             <div className="text-white/50 text-sm">Phase: {phase}</div>
             <div className="text-white/50 text-sm">
@@ -600,12 +562,13 @@ export default function CollectifRoom() {
         </div>
 
         {/* MAIN */}
-        <div className="grid md:grid-cols-[1.5fr_1fr] gap-6">
+        <div className="grid xl:grid-cols-[2.35fr_0.95fr] gap-6">
           {/* LEFT BOARD */}
-          <div className="rounded-xl border border-white/10 bg-white/5 p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="font-display tracking-[0.12em] text-sm">
-                PLATEAU (66)
+          <div className="space-y-4">
+            {/* Bandeau dé (dernier lancer) */}
+            <div className="rounded-xl border border-white/10 bg-white/5 p-4 flex items-center justify-between">
+              <div className="font-display tracking-[0.12em] text-sm text-white/80">
+                PLATEAU (3D)
               </div>
 
               <div className="text-xs text-white/45 flex items-center gap-3">
@@ -628,34 +591,11 @@ export default function CollectifRoom() {
               </div>
             </div>
 
-            <div className="grid grid-cols-11 gap-2">
-              {Array.from({ length: size }).map((_, i) => {
-                const cell = cells[i];
-                const cellPlayers = playersEntries
-                  .filter(([id]) => (positions[id] ?? 0) === i)
-                  .map(([, p]) => p?.name?.[0]?.toUpperCase() || "?");
+            {/* Plateau 3D */}
+            <CollectifBoard3D room={room} activeIndex={activeIndex} />
 
-                return (
-                  <div
-                    key={i}
-                    className={[
-                      "h-12 rounded-md border flex items-center justify-center text-[11px] text-white/70 relative select-none",
-                      cellStyle(cell),
-                    ].join(" ")}
-                    title={`case ${i} · ${cell?.type}${cell?.theme ? " · " + cell.theme : ""}`}
-                  >
-                    <div className="absolute top-1 left-1 text-[10px] text-white/50">
-                      {cellLabel(cell)}
-                    </div>
-                    <div className="font-display tracking-[0.08em]">
-                      {cellPlayers.join("") || i}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-4 text-center text-white/35 text-xs">
+            {/* Texte d’aide */}
+            <div className="text-center text-white/35 text-xs">
               {phase === "initiative"
                 ? "Chaque joueur lance le dé (score unique). Le host valide l’ordre."
                 : phase === "playing" && qStatus === "running"
@@ -688,9 +628,14 @@ export default function CollectifRoom() {
                   return (
                     <div key={id} className="flex items-center justify-between">
                       <div className="text-white/85">
-                        {p?.name || "?"} <span className="text-white/40">({p?.grade})</span>
-                        {id === playerId ? <span className="ml-2 text-[#D4AF37]">• toi</span> : null}
-                        {id === room?.meta?.hostId ? <span className="ml-2 text-white/35">• host</span> : null}
+                        {p?.name || "?"}{" "}
+                        <span className="text-white/40">({p?.grade})</span>
+                        {id === playerId ? (
+                          <span className="ml-2 text-[#D4AF37]">• toi</span>
+                        ) : null}
+                        {id === room?.meta?.hostId ? (
+                          <span className="ml-2 text-white/35">• host</span>
+                        ) : null}
                         {phase === "initiative" && typeof roll === "number" ? (
                           <span className="ml-2 text-white/50">• 🎲 {roll}</span>
                         ) : null}
@@ -698,7 +643,9 @@ export default function CollectifRoom() {
 
                       <div className="text-white/40 text-sm">
                         pos: {positions[id] ?? 0} {p?.connected ? "🟢" : "⚫️"}
-                        {isTurn ? <span className="ml-2 text-[#D4AF37]">◀ tour</span> : null}
+                        {isTurn ? (
+                          <span className="ml-2 text-[#D4AF37]">◀ tour</span>
+                        ) : null}
                       </div>
                     </div>
                   );

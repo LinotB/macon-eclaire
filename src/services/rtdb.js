@@ -453,3 +453,61 @@ export async function finishQuestion(roomId) {
 
   await nextTurn(roomId, room);
 }
+
+
+/**
+ * Génère un plateau complet et l'écrit dans Firebase :
+ * rooms/{roomId}/board = { size, cells, positions }
+ */
+export async function seedBoard(roomId) {
+  const size = 66;
+
+  // Thèmes de base (rotation)
+  const THEMES = ["symboles", "rituels", "histoire", "reglement"];
+
+  // Cases spéciales fixes (tu peux changer ces index)
+  const SPECIALS = {
+    0: { type: "start" },
+    65: { type: "arrivee" },
+
+    6: { type: "evenement" },
+    12: { type: "cabinet" },
+    18: { type: "augmentation" },
+    22: { type: "quiz" },
+    27: { type: "defi" },
+
+    33: { type: "evenement" },
+    39: { type: "cabinet" },
+    44: { type: "augmentation" },
+    50: { type: "quiz" },
+    57: { type: "defi" },
+  };
+
+  const cells = Array.from({ length: size }).map((_, i) => {
+    // start/arrivee/special
+    if (SPECIALS[i]) {
+      return {
+        index: i,
+        ...SPECIALS[i],
+      };
+    }
+
+    // Sinon : question à thème
+    const theme = THEMES[(i - 1) % THEMES.length]; // -1 pour éviter que la case 1 commence "bizarre"
+    return {
+      index: i,
+      type: "question",
+      theme,
+    };
+  });
+
+  // IMPORTANT: Firebase peut stocker array ou object
+  // Ici on stocke un array propre, compatible avec ton UI
+  await update(ref(db, `rooms/${roomId}/board`), {
+    size,
+    cells,
+  });
+
+  console.log("✅ seedBoard OK:", roomId);
+}
+

@@ -1,6 +1,4 @@
-// src/pages/CreateCharacter.jsx
-import { useCharacter } from "../context/CharacterContext";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -16,19 +14,22 @@ import {
   Flame,
   ScrollText,
 } from "lucide-react";
-import StarField from "../components/ui/StarField";
 
+import StarField from "../components/ui/StarField";
+import { useCharacter } from "../context/CharacterContext";
+import AvatarPreview3D from "../components/avatar3d/AvatarPreview3D";
+
+// ✅ Ancien fallback conservé seulement si besoin ailleurs
 function getAvatarUrl(grade) {
   if (grade === "Compagnon") return "/avatars/compagnon.png";
   if (grade === "Maître") return "/avatars/maitre.png";
-  return "/avatars/apprenti.png"; // Apprenti par défaut
+  return "/avatars/apprenti.png";
 }
 
 export default function CreateCharacter() {
   const navigate = useNavigate();
   const { setCharacter } = useCharacter();
 
-  // ✅ Étapes : Identité -> Apparence -> Grade -> Rite
   const steps = useMemo(
     () => [
       {
@@ -45,7 +46,7 @@ export default function CreateCharacter() {
       },
       {
         key: "grade",
-        label: "Grade",
+        label: "Parcours",
         subtitle: "Sélectionnez votre niveau d’avancement",
         icon: Crown,
       },
@@ -59,7 +60,6 @@ export default function CreateCharacter() {
     []
   );
 
-  // ✅ Grades (outils distincts)
   const grades = useMemo(
     () => [
       {
@@ -87,7 +87,6 @@ export default function CreateCharacter() {
     []
   );
 
-  // ✅ Rites (simple, sobre)
   const rites = useMemo(
     () => [
       {
@@ -112,32 +111,177 @@ export default function CreateCharacter() {
     []
   );
 
+  const apronOptions = useMemo(
+    () => [
+      { key: "Apprenti", label: "Apprenti" },
+      { key: "Compagnon", label: "Compagnon" },
+      { key: "Maitre", label: "Maître" },
+    ],
+    []
+  );
+
+  const neckAdornmentTypes = useMemo(
+    () => [
+      { key: "none", label: "Aucun" },
+      { key: "cordon", label: "Cordon" },
+      { key: "sautoire", label: "Sautoir" },
+    ],
+    []
+  );
+
+  const sautoirOptions = useMemo(
+    () => [
+      { key: "Sautoire_couvreur", label: "Couvreur" },
+      { key: "Sautoire_expert", label: "Expert" },
+      { key: "Sautoire_harmonie", label: "Harmonie" },
+      { key: "Sautoire_hospitalier", label: "Hospitalier" },
+      { key: "Sautoire_maitre_banquet", label: "Maître des banquets" },
+      { key: "Sautoire_maitre_ceremonie", label: "Maître des cérémonies" },
+      { key: "Sautoire_orateur", label: "Orateur" },
+      { key: "Sautoire_premier_surveillant", label: "Premier surveillant" },
+      { key: "Sautoire_second_surveillant", label: "Second surveillant" },
+      { key: "Sautoire_secretaire", label: "Secrétaire" },
+      { key: "Sautoire_tresorier", label: "Trésorier" },
+      { key: "Sautoire_VM", label: "Vénérable Maître" },
+    ],
+    []
+  );
+
   const [stepIndex, setStepIndex] = useState(0);
 
-  // Identité
+  // -------------------------
+  // ÉTAPE 1 — IDENTITÉ
+  // -------------------------
   const [name, setName] = useState("");
   const isValidName = name.trim().length >= 3;
 
-  // Apparence
-  const skinTones = ["#F8D7B2", "#F1C08E", "#D8A06A", "#B47A4D", "#8C5A35", "#5A3824"];
-  const hairStyles = [
-    { key: "classic", label: "Court classique" },
-    { key: "wavy", label: "Mi-long ondulé" },
-    { key: "shaved", label: "Rasé" },
-    { key: "white", label: "Cheveux blancs" },
+  // -------------------------
+  // ÉTAPE 2 — APPARENCE
+  // -------------------------
+  const skinTones = [
+    "#F8D7B2",
+    "#F1C08E",
+    "#D8A06A",
+    "#B47A4D",
+    "#8C5A35",
+    "#5A3824",
   ];
+
+  const hairStyles = useMemo(
+    () => [
+      { key: "classic", label: "Court classique" },
+      { key: "wavy", label: "Mi-long ondulé" },
+      { key: "shaved", label: "Rasé" },
+      { key: "white", label: "Cheveux blancs" },
+    ],
+    []
+  );
+
+  const faceShapes = useMemo(
+    () => [
+      { key: "round", label: "Rond" },
+      { key: "oval", label: "Ovale" },
+      { key: "square", label: "Carré" },
+    ],
+    []
+  );
+
+  const hairColors = useMemo(
+    () => ["#1f1b16", "#3b2a1a", "#7a4a2a", "#caa26a", "#ffffff"],
+    []
+  );
+
+  const beards = useMemo(
+    () => [
+      { key: "none", label: "Aucune" },
+      { key: "short", label: "Courte" },
+      { key: "full", label: "Pleine" },
+    ],
+    []
+  );
+
+  const mustaches = useMemo(
+    () => [
+      { key: "none", label: "Aucune" },
+      { key: "thin", label: "Fine" },
+      { key: "handlebar", label: "Guidon" },
+    ],
+    []
+  );
+
+  const [gender, setGender] = useState("male");
   const [skin, setSkin] = useState(skinTones[0]);
   const [hair, setHair] = useState(hairStyles[0].key);
+  const [faceShape, setFaceShape] = useState(faceShapes[0].key);
+  const [hairColor, setHairColor] = useState(hairColors[0]);
+  const [beard, setBeard] = useState("none");
+  const [mustache, setMustache] = useState("none");
+  const [apron, setApron] = useState("Apprenti");
+  const [neckAdornmentType, setNeckAdornmentType] = useState("none");
+  const [selectedSautoir, setSelectedSautoir] = useState("Sautoire_couvreur");
 
-  // Grade
+  // -------------------------
+  // ÉTAPE 3 — GRADE DE JEU
+  // -------------------------
   const [grade, setGrade] = useState(grades[0].key);
 
-  // Rite
+  // -------------------------
+  // ÉTAPE 4 — RITE
+  // -------------------------
   const [rite, setRite] = useState(rites[0].key);
 
-  // ✅ Persist à chaque "Suivant"
-  // ✅ ICI on enregistre aussi avatarUrl
-  const persist = () => {
+  // -------------------------
+  // CONFIG AVATAR (visuelle)
+  // -------------------------
+  const currentAvatarConfig = useMemo(
+    () => ({
+      gender,
+      faceShape,
+      skinTone: skin,
+      hairStyle: hair,
+      hairColor,
+      beard,
+      mustache,
+      apron,
+      neckAdornmentType,
+      selectedSautoir,
+      grade,
+    }),
+    [
+      gender,
+      faceShape,
+      skin,
+      hair,
+      hairColor,
+      beard,
+      mustache,
+      apron,
+      neckAdornmentType,
+      selectedSautoir,
+      grade,
+    ]
+  );
+
+  // Compat temporaire
+  const [avatarPreview, setAvatarPreview] = useState("");
+  const [previewErr, setPreviewErr] = useState("");
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  const regeneratePreview = useCallback(async () => {
+    setPreviewErr("");
+    setPreviewLoading(false);
+    setAvatarPreview("");
+  }, []);
+
+  useEffect(() => {
+    if (stepIndex !== 1) return;
+    regeneratePreview();
+  }, [stepIndex, regeneratePreview]);
+
+  // -------------------------
+  // PERSISTENCE
+  // -------------------------
+  const persist = useCallback(async () => {
     const avatarUrl = getAvatarUrl(grade);
 
     setCharacter((prev) => ({
@@ -145,22 +289,55 @@ export default function CreateCharacter() {
       pseudo: name.trim() || prev.pseudo,
       grade: grade || prev.grade,
       rite: rite || prev.rite,
-      avatarUrl, // ✅ IMPORTANT (sera stocké via CharacterContext -> localStorage)
+
+      // compat éventuelle
+      avatarUrl,
+
+      // ✅ config 3D principale
+      avatarConfig: currentAvatarConfig,
+      avatarPng: "",
+
       appearance: {
         ...(prev.appearance || {}),
         skin,
         hair,
+        gender,
+        faceShape,
+        hairColor,
+        beard,
+        mustache,
+        apron,
+        neckAdornmentType,
+        selectedSautoir,
       },
     }));
-  };
+  }, [
+    setCharacter,
+    name,
+    grade,
+    rite,
+    currentAvatarConfig,
+    skin,
+    hair,
+    gender,
+    faceShape,
+    hairColor,
+    beard,
+    mustache,
+    apron,
+    neckAdornmentType,
+    selectedSautoir,
+  ]);
 
-  const next = () => {
+  const next = async () => {
     if (stepIndex === 0 && !isValidName) return;
+    await persist();
 
-    persist();
-
-    if (stepIndex < steps.length - 1) setStepIndex((s) => s + 1);
-    else navigate("/menu");
+    if (stepIndex < steps.length - 1) {
+      setStepIndex((s) => s + 1);
+    } else {
+      navigate("/menu");
+    }
   };
 
   const prev = () => {
@@ -174,11 +351,9 @@ export default function CreateCharacter() {
     <div className="relative min-h-screen overflow-hidden bg-[#0B1120] text-white">
       <StarField intensity={45} />
 
-      {/* Overlays */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-[#0B1120]/40 to-[#0B1120]" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(212,175,55,0.08),transparent_55%)] pointer-events-none" />
 
-      {/* Header */}
       <header className="relative z-10 px-6 py-6">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <button
@@ -190,7 +365,6 @@ export default function CreateCharacter() {
             RETOUR
           </button>
 
-          {/* Steps */}
           <div className="flex items-center gap-4">
             {steps.map((s, i) => {
               const Icon = s.icon;
@@ -225,7 +399,6 @@ export default function CreateCharacter() {
 
       <main className="relative z-10 px-6 pb-24">
         <div className="max-w-5xl mx-auto">
-          {/* Title */}
           <motion.div
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
@@ -238,17 +411,18 @@ export default function CreateCharacter() {
             <p className="font-body text-white/70 italic">{steps[stepIndex].subtitle}</p>
           </motion.div>
 
-          {/* Card */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.1 }}
             className="max-w-3xl mx-auto rounded-2xl border border-white/10 bg-white/5 p-10"
           >
-            {/* STEP 1: Identité */}
+            {/* STEP 1 */}
             {stepIndex === 0 && (
               <>
-                <label className="font-body text-sm text-[#D4AF37]/90">Nom Initiatique</label>
+                <label className="font-body text-sm text-[#D4AF37]/90">
+                  Nom Initiatique
+                </label>
 
                 <div className="mt-3">
                   <input
@@ -265,42 +439,183 @@ export default function CreateCharacter() {
                     "
                   />
                   <p className="mt-3 text-xs text-white/45 font-body">
-                    Minimum 3 caractères.
-                  </p>
-                </div>
-
-                <div className="mt-8 rounded-xl border border-white/10 bg-[#0B1120]/35 p-5">
-                  <p className="font-body text-sm text-[#D4AF37]/80 italic">
-                    “Choisissez-le avec sagesse, car il accompagnera votre voyage initiatique.”
+                    Minimum 3 caractères. Choisissez-le avec sagesse, car il accompagnera votre voyage
+                    initiatique.
                   </p>
                 </div>
               </>
             )}
 
-            {/* STEP 2: Apparence */}
+            {/* STEP 2 */}
             {stepIndex === 1 && (
               <div className="flex flex-col items-center">
-                {/* Avatar preview */}
-                <div className="w-28 h-28 rounded-full border border-[#D4AF37]/40 bg-white/5 overflow-hidden shadow-[0_0_30px_rgba(212,175,55,0.12)]">
-                  <img
-                    src={getAvatarUrl(grade)}
-                    alt="Aperçu avatar"
-                    className="w-full h-full object-cover"
-                    draggable="false"
-                  />
-                </div>
+                <AvatarPreview3D
+                  gender={gender}
+                  apron={apron}
+                  neckAdornmentType={neckAdornmentType}
+                  selectedSautoir={selectedSautoir}
+                />
 
                 <div className="mt-3 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-display tracking-[0.12em] text-white/70">
-                  TABLIER
+                  APERÇU 3D {previewLoading ? "…" : ""}
                 </div>
 
-                <div className="mt-8 w-full">
-                  {/* Carnation */}
+                {previewErr ? (
+                  <div className="mt-3 text-xs text-red-300">{previewErr}</div>
+                ) : null}
+
+                <div className="mt-8 w-full space-y-8">
+                  {/* Genre */}
                   <div>
+                    <div className="font-display tracking-[0.12em] text-xs text-white/60 mb-3 text-center">
+                      GENRE
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setGender("male")}
+                        className={[
+                          "rounded-md px-4 py-3 border text-sm font-body transition text-center",
+                          gender === "male"
+                            ? "border-[#D4AF37]/45 bg-[#D4AF37]/10 text-[#D4AF37]"
+                            : "border-white/10 bg-white/5 text-white/60 hover:border-white/20",
+                        ].join(" ")}
+                      >
+                        Homme
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setGender("female")}
+                        className={[
+                          "rounded-md px-4 py-3 border text-sm font-body transition text-center",
+                          gender === "female"
+                            ? "border-[#D4AF37]/45 bg-[#D4AF37]/10 text-[#D4AF37]"
+                            : "border-white/10 bg-white/5 text-white/60 hover:border-white/20",
+                        ].join(" ")}
+                      >
+                        Femme
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Tablier */}
+                  <div>
+                    <div className="font-display tracking-[0.12em] text-xs text-white/60 mb-3 text-center">
+                      TABLIER
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      {apronOptions.map((a) => {
+                        const selected = a.key === apron;
+                        return (
+                          <button
+                            key={a.key}
+                            type="button"
+                            onClick={() => setApron(a.key)}
+                            className={[
+                              "rounded-md px-3 py-3 border text-sm font-body transition text-center",
+                              selected
+                                ? "border-[#D4AF37]/45 bg-[#D4AF37]/10 text-[#D4AF37]"
+                                : "border-white/10 bg-white/5 text-white/60 hover:border-white/20",
+                            ].join(" ")}
+                          >
+                            {a.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Ornement de cou */}
+                  <div>
+                    <div className="font-display tracking-[0.12em] text-xs text-white/60 mb-3 text-center">
+                      ORNEMENT DE COU
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-3">
+                      {neckAdornmentTypes.map((item) => {
+                        const selected = item.key === neckAdornmentType;
+                        return (
+                          <button
+                            key={item.key}
+                            type="button"
+                            onClick={() => setNeckAdornmentType(item.key)}
+                            className={[
+                              "rounded-md px-3 py-3 border text-sm font-body transition text-center",
+                              selected
+                                ? "border-[#D4AF37]/45 bg-[#D4AF37]/10 text-[#D4AF37]"
+                                : "border-white/10 bg-white/5 text-white/60 hover:border-white/20",
+                            ].join(" ")}
+                          >
+                            {item.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {neckAdornmentType === "sautoire" && (
+                    <div>
+                      <div className="font-display tracking-[0.12em] text-xs text-white/60 mb-3 text-center">
+                        CHOIX DU SAUTOIR
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {sautoirOptions.map((s) => {
+                          const selected = s.key === selectedSautoir;
+                          return (
+                            <button
+                              key={s.key}
+                              type="button"
+                              onClick={() => setSelectedSautoir(s.key)}
+                              className={[
+                                "rounded-md px-3 py-3 border text-sm font-body transition text-center",
+                                selected
+                                  ? "border-[#D4AF37]/45 bg-[#D4AF37]/10 text-[#D4AF37]"
+                                  : "border-white/10 bg-white/5 text-white/60 hover:border-white/20",
+                              ].join(" ")}
+                            >
+                              {s.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                {/* Visage */}
+                 {/*  <div>
+                    <div className="font-display tracking-[0.12em] text-xs text-white/60 mb-3 text-center">
+                      FORME DU VISAGE
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      {faceShapes.map((f) => {
+                        const selected = f.key === faceShape;
+                        return (
+                          <button
+                            key={f.key}
+                            type="button"
+                            onClick={() => setFaceShape(f.key)}
+                            className={[
+                              "rounded-md px-3 py-3 border text-sm font-body transition text-center",
+                              selected
+                                ? "border-[#D4AF37]/45 bg-[#D4AF37]/10 text-[#D4AF37]"
+                                : "border-white/10 bg-white/5 text-white/60 hover:border-white/20",
+                            ].join(" ")}
+                          >
+                            {f.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div> */}
+
+                  {/* Carnation */}
+                  {/*<div>
                     <div className="font-display tracking-[0.12em] text-xs text-white/60 mb-3 text-center">
                       CARNATION
                     </div>
-                    <div className="flex items-center justify-center gap-3">
+                    <div className="flex items-center justify-center gap-3 flex-wrap">
                       {skinTones.map((c) => {
                         const selected = c === skin;
                         return (
@@ -320,14 +635,13 @@ export default function CreateCharacter() {
                         );
                       })}
                     </div>
-                  </div>
+                  </div>*/}
 
                   {/* Coiffure */}
-                  <div className="mt-8">
+                  {/*<div>
                     <div className="font-display tracking-[0.12em] text-xs text-white/60 mb-3 text-center">
                       COIFFURE
                     </div>
-
                     <div className="grid grid-cols-2 gap-3">
                       {hairStyles.map((h) => {
                         const selected = h.key === hair;
@@ -348,12 +662,94 @@ export default function CreateCharacter() {
                         );
                       })}
                     </div>
-                  </div>
-                </div>
+                  </div>*/}
+
+                  {/* Couleur cheveux */}
+                  {/*<div>
+                    <div className="font-display tracking-[0.12em] text-xs text-white/60 mb-3 text-center">
+                      COULEUR DES CHEVEUX
+                    </div>
+                    <div className="flex items-center justify-center gap-3 flex-wrap">
+                      {hairColors.map((c) => {
+                        const selected = c === hairColor;
+                        return (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => setHairColor(c)}
+                            className={[
+                              "w-10 h-10 rounded-full border transition",
+                              selected
+                                ? "border-[#D4AF37] ring-2 ring-[#D4AF37]/20"
+                                : "border-white/10 hover:border-white/25",
+                            ].join(" ")}
+                            style={{ backgroundColor: c }}
+                            aria-label="Choisir couleur cheveux"
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>*/}
+
+                  {/* Barbe */}
+                  {/*<div>
+                    <div className="font-display tracking-[0.12em] text-xs text-white/60 mb-3 text-center">
+                      BARBE
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      {beards.map((b) => {
+                        const selected = b.key === beard;
+                        return (
+                          <button
+                            key={b.key}
+                            type="button"
+                            onClick={() => setBeard(b.key)}
+                            className={[
+                              "rounded-md px-3 py-3 border text-sm font-body transition text-center",
+                              selected
+                                ? "border-[#D4AF37]/45 bg-[#D4AF37]/10 text-[#D4AF37]"
+                                : "border-white/10 bg-white/5 text-white/60 hover:border-white/20",
+                            ].join(" ")}
+                          >
+                            {b.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>*/}
+
+                  {/* Moustache */}
+                  {/*<div>
+                    <div className="font-display tracking-[0.12em] text-xs text-white/60 mb-3 text-center">
+                      MOUSTACHE
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      {mustaches.map((m) => {
+                        const selected = m.key === mustache;
+                        return (
+                          <button
+                            key={m.key}
+                            type="button"
+                            onClick={() => setMustache(m.key)}
+                            className={[
+                              "rounded-md px-3 py-3 border text-sm font-body transition text-center",
+                              selected
+                                ? "border-[#D4AF37]/45 bg-[#D4AF37]/10 text-[#D4AF37]"
+                                : "border-white/10 bg-white/5 text-white/60 hover:border-white/20",
+                            ].join(" ")}
+                          >
+                            {m.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>*/}
+
+                </div> 
               </div>
             )}
 
-            {/* STEP 3: Grade */}
+            {/* STEP 3 */}
             {stepIndex === 2 && (
               <div className="w-full">
                 <div className="flex items-center justify-center mb-8">
@@ -424,7 +820,7 @@ export default function CreateCharacter() {
               </div>
             )}
 
-            {/* STEP 4: Rite */}
+            {/* STEP 4 */}
             {stepIndex === 3 && (
               <div className="w-full">
                 <div className="flex items-center justify-center mb-8">
@@ -481,15 +877,14 @@ export default function CreateCharacter() {
 
                 <div className="mt-8 rounded-xl border border-white/10 bg-[#0B1120]/35 p-5">
                   <p className="font-body text-sm text-white/60 italic">
-                    Votre choix permettra d’adapter certains contenus (terminologie,
-                    progression, références) tout en gardant l’esprit du jeu.
+                    Votre choix permettra d’adapter certains contenus tout en gardant
+                    l’esprit du jeu.
                   </p>
                 </div>
               </div>
             )}
           </motion.div>
 
-          {/* Footer nav */}
           <div className="max-w-3xl mx-auto mt-10 flex items-center justify-between">
             <button
               type="button"
@@ -516,7 +911,6 @@ export default function CreateCharacter() {
             </button>
           </div>
 
-          {/* debug optionnel */}
           <div className="max-w-3xl mx-auto mt-6 text-center">
             <Link to="/menu" className="text-xs text-white/25 hover:text-white/40">
               (Aller au menu — debug)

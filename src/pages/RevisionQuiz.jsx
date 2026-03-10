@@ -15,6 +15,9 @@ import themeMix from "../assets/themes/mix.png";
 import pierreOr from "../assets/ui/pierre-or.png";
 import DifficultyStones from "../components/ui/DifficultyStones";
 
+// ✅ NOUVEAU: banque centralisée
+import { getQuestions } from "../data/questions";
+
 const THEME_CONFIG = {
   symboles: {
     label: "SYMBOLE",
@@ -54,104 +57,6 @@ const THEME_CONFIG = {
   },
 };
 
-// ✅ mini banque d’exemples (avec points 1/2/3)
-const BANK = {
-  symboles: [
-    {
-      id: "sym-1",
-      title: "QUESTION",
-      points: 2,
-      question:
-        "Que symbolisent principalement l’équerre et le compas en franc-maçonnerie ?",
-      answers: [
-        "La hiérarchie et le pouvoir au sein de la loge",
-        "La mesure, la rectitude et la maîtrise de soi",
-        "L’appartenance à un ordre ancien",
-        "La transmission des secrets opératifs",
-      ],
-      correctIndexes: [1],
-      feedback:
-        "L’équerre et le compas renvoient classiquement à la rectitude, la mesure, l’équilibre et le travail intérieur.",
-    },
-  ],
-  rituels: [
-    {
-      id: "rit-1",
-      title: "QUESTION",
-      points: 3,
-      question:
-        "Dans un cadre rituel, à quoi sert principalement la répétition des gestes et des paroles ?",
-      answers: [
-        "À accélérer la cérémonie",
-        "À créer un cadre symbolique et mémoriel",
-        "À divertir l’assemblée",
-        "À remplacer l’étude personnelle",
-      ],
-      correctIndexes: [1],
-      feedback:
-        "La répétition structure l’attention, renforce la mémoire symbolique et installe un rythme propice à l’intériorisation.",
-    },
-  ],
-  histoire: [
-    {
-      id: "his-1",
-      title: "QUESTION",
-      points: 1,
-      question:
-        "Quel est l’intérêt d’étudier l’histoire des courants initiatiques et des loges ?",
-      answers: [
-        "Accumuler des dates",
-        "Comprendre l’évolution des idées et des pratiques",
-        "Remplacer l’expérience vécue",
-        "Éviter toute diversité de points de vue",
-      ],
-      correctIndexes: [1],
-      feedback:
-        "L’histoire aide à contextualiser les pratiques et à comprendre les influences culturelles et philosophiques au fil du temps.",
-    },
-  ],
-  reglement: [
-    {
-      id: "reg-1",
-      title: "QUESTION",
-      points: 2,
-      question:
-        "À quoi sert principalement un règlement intérieur dans une organisation ?",
-      answers: [
-        "À décourager les nouveaux",
-        "À clarifier le cadre commun et les règles de fonctionnement",
-        "À supprimer toute liberté individuelle",
-        "À remplacer les décisions collectives",
-      ],
-      correctIndexes: [1],
-      feedback:
-        "Un règlement intérieur fixe un cadre clair : rôles, procédures, règles de vie commune et principes de fonctionnement.",
-    },
-  ],
-  defis: [
-    {
-      id: "def-1",
-      title: "DÉFI",
-      points: 2,
-      question:
-        "Choisissez la meilleure réponse : un défi initiatique personnel vise surtout à…",
-      answers: [
-        "Se comparer aux autres",
-        "Travailler une discipline et une introspection concrète",
-        "Gagner uniquement des récompenses",
-        "Éviter toute remise en question",
-      ],
-      correctIndexes: [1],
-      feedback:
-        "L’objectif est l’effort intérieur : discipline, constance, observation de soi et progression personnelle.",
-    },
-  ],
-};
-
-function buildMixBank() {
-  return Object.values(BANK).flat();
-}
-
 export default function RevisionQuiz() {
   const { themeId } = useParams();
   const navigate = useNavigate();
@@ -159,10 +64,37 @@ export default function RevisionQuiz() {
   const themeKey = (themeId || "").toLowerCase();
   const theme = THEME_CONFIG[themeKey] || THEME_CONFIG.symboles;
 
+  // ✅ (optionnel) tu pourras plus tard brancher un sélecteur 1/2/3
+  const difficulty = 1;
+
+  // ✅ NOUVEAU: récupère depuis src/data/questions
   const cards = useMemo(() => {
-    if (themeKey === "mix") return buildMixBank();
-    return BANK[themeKey] || BANK.symboles;
-  }, [themeKey]);
+    const list = getQuestions({
+      theme: themeKey,     // symboles / rituels / ... / mix
+      difficulty,          // 1/2/3
+      count: 100,          // objectif ~100 questions
+      shuffle: true,
+    });
+
+    // fallback si ta banque est vide
+    if (!list || list.length === 0) {
+      return [
+        {
+          id: "fallback-1",
+          title: "QUESTION",
+          points: 1,
+          question:
+            "Aucune question trouvée pour ce thème/difficulté. Ajoute des questions dans src/data/questions/…",
+          answers: ["OK"],
+          correctIndexes: [0],
+          feedback:
+            "Vérifie tes exports (export default [...]) et tes imports dans src/data/questions/index.js.",
+        },
+      ];
+    }
+
+    return list;
+  }, [themeKey, difficulty]);
 
   const [index, setIndex] = useState(0);
 
@@ -170,7 +102,10 @@ export default function RevisionQuiz() {
   const [revealed, setRevealed] = useState(false);
 
   const card = cards[index];
-  const correctSet = useMemo(() => new Set(card.correctIndexes), [card]);
+  const correctSet = useMemo(
+    () => new Set(card?.correctIndexes || []),
+    [card]
+  );
 
   const resetCard = () => {
     setPicked(null);
@@ -260,7 +195,7 @@ export default function RevisionQuiz() {
       <main className="relative z-10 px-6 pb-24">
         <div className="max-w-6xl mx-auto">
           <motion.div
-            key={card.id}
+            key={card?.id || index}
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45 }}
@@ -272,7 +207,7 @@ export default function RevisionQuiz() {
                 background: `linear-gradient(180deg, ${theme.headerFrom}, ${theme.headerTo})`,
               }}
             >
-              {/* ✅ header = gauche (thème) + droite (progress + difficulté) */}
+              {/* header = gauche (thème) + droite (progress + difficulté) */}
               <div className="flex items-start justify-between gap-8">
                 <div className="flex items-start gap-8">
                   <img
@@ -284,7 +219,7 @@ export default function RevisionQuiz() {
 
                   <div>
                     <div className="font-display tracking-[0.22em] text-2xl md:text-3xl">
-                      {card.title}
+                      {card?.title || "QUESTION"}
                     </div>
 
                     <div className="mt-4 h-px w-56 bg-gradient-to-r from-transparent via-[#D4AF37]/60 to-transparent" />
@@ -304,21 +239,18 @@ export default function RevisionQuiz() {
                     {progressPct}%
                   </div>
 
-                  <DifficultyStones
-                    points={card.points || 1}
-                    src={pierreOr}
-                  />
+                  <DifficultyStones points={card?.points || 1} src={pierreOr} />
                 </div>
               </div>
             </div>
 
             <div className="px-10 md:px-12 py-10 md:py-12">
               <div className="font-body text-lg md:text-xl text-white/80 italic mb-8">
-                {card.question}
+                {card?.question}
               </div>
 
               <div className="space-y-4">
-                {card.answers.map((a, i) => {
+                {(card?.answers || []).map((a, i) => {
                   const isCorrect = revealed && correctSet.has(i);
                   const isPicked = revealed && picked === i;
                   const showGood = isCorrect;
@@ -343,10 +275,14 @@ export default function RevisionQuiz() {
                         </div>
 
                         {showGood && (
-                          <span className="text-emerald-300 font-display text-lg">✓</span>
+                          <span className="text-emerald-300 font-display text-lg">
+                            ✓
+                          </span>
                         )}
                         {showBad && (
-                          <span className="text-red-300 font-display text-lg">✗</span>
+                          <span className="text-red-300 font-display text-lg">
+                            ✗
+                          </span>
                         )}
                       </div>
                     </button>
@@ -366,7 +302,7 @@ export default function RevisionQuiz() {
                       <Lightbulb size={18} />
                     </div>
                     <p className="font-body text-sm text-[#D4AF37]/85">
-                      {card.feedback}
+                      {card?.feedback || ""}
                     </p>
                   </div>
                 </motion.div>

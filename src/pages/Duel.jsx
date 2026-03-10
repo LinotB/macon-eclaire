@@ -442,15 +442,11 @@ const startDuel = () => {
                   </button>
 
                   <button
-  onClick={() => {
-    console.log("✅ CLICK COMMENCER", selected?.id);
-    startDuel();
-  }}
-  className="flex-1 rounded-md px-4 py-3 bg-[#D4AF37] text-black hover:brightness-110 transition font-display tracking-[0.12em] text-xs border border-[#D4AF37]/30 shadow-[0_0_28px_rgba(212,175,55,0.18)]"
->
-  COMMENCER
-</button>
-
+                    onClick={startDuel}
+                    className="flex-1 rounded-md px-4 py-3 bg-[#D4AF37] text-black hover:brightness-110 transition font-display tracking-[0.12em] text-xs border border-[#D4AF37]/30 shadow-[0_0_28px_rgba(212,175,55,0.18)]"
+                  >
+                    COMMENCER
+                  </button>
                 </div>
 
                 <p className="mt-5 font-body text-xs text-white/40 italic text-center">

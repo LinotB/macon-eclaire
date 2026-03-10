@@ -9,7 +9,13 @@ const DEFAULT_CHARACTER = {
   pseudo: "",
   rite: "",
   grade: "",
-  avatarUrl: "", // ✅ ajouté
+
+  // ✅ ancien (tu peux le garder si tu veux)
+  avatarUrl: "",
+
+  // ✅ nouveau : avatar “créé”
+  avatarConfig: null, // JSON (genre, visage, cheveux, etc.)
+  avatarPng: "", // dataURL png (image générée)
 };
 
 export function CharacterProvider({ children }) {
@@ -22,7 +28,6 @@ export function CharacterProvider({ children }) {
     }
   });
 
-  // ✅ persiste comme ProgressContext
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(character));
   }, [character]);

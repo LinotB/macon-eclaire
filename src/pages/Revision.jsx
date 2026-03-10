@@ -1,4 +1,3 @@
-// src/pages/Revision.jsx
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
@@ -10,7 +9,6 @@ import rituelsIcon from "../assets/themes/rituels.png";
 import histoireIcon from "../assets/themes/histoire.png";
 import reglementIcon from "../assets/themes/reglement.png";
 import defisIcon from "../assets/themes/defis.png";
-// optionnel
 import mixIcon from "../assets/themes/mix.png";
 
 export default function Revision() {
@@ -53,13 +51,27 @@ export default function Revision() {
       icon: defisIcon,
       bg: "from-[#7F1D1D] to-[#3F0E0E]",
     },
+
+    // 🎯 CASE MIX MULTICOLORE
     {
       id: "mix",
       title: "Quiz",
       subtitle: "Aléatoire",
-      icon: mixIcon, // si tu ne veux pas d’icône → supprime cette ligne
-      bg: "from-[#1F2937] to-[#111827]",
-      
+      icon: mixIcon,
+      bgStyle: {
+  backgroundImage: `
+    radial-gradient(circle at 50% 35%, rgba(255,255,255,0.10), rgba(0,0,0,0) 55%),
+    conic-gradient(
+      from -30deg,
+      #4B237A 0% 20%,
+      #1E3A8A 20% 40%,
+      #14532D 40% 60%,
+      #7C2D12 60% 80%,
+      #7F1D1D 80% 100%
+    )
+  `,
+}
+
     },
   ];
 
@@ -92,6 +104,7 @@ export default function Revision() {
 
       <main className="relative z-10 px-6 pb-24">
         <div className="max-w-6xl mx-auto">
+
           {/* Titles */}
           <motion.div
             initial={{ opacity: 0, y: 14 }}
@@ -116,37 +129,37 @@ export default function Revision() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.08 + i * 0.06 }}
                 onClick={() => navigate(`/revision/${t.id}`)}
+
                 className={[
                   "relative rounded-2xl overflow-hidden p-8 text-center",
                   "border border-white/10 hover:border-white/20 transition",
-                  "bg-gradient-to-br",
-                  t.bg,
+                  !t.bgStyle ? "bg-gradient-to-br" : "",
+                  !t.bgStyle ? t.bg : "",
                 ].join(" ")}
+
+                style={t.bgStyle ? t.bgStyle : undefined}
               >
-                {/* glow */}
+                {/* glow général */}
                 <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.08),transparent_55%)]" />
 
-                {/* tag */}
-                {t.tag && (
-                  <div className="absolute top-4 right-4 text-[10px] font-display tracking-[0.18em] px-2.5 py-1 rounded-full bg-black/30 border border-white/15">
-                    {t.tag}
-                  </div>
+                {/* voile sombre pour lisibilité (uniquement mix) */}
+                {t.bgStyle && (
+                  <div className="absolute inset-0 bg-black/35 pointer-events-none" />
                 )}
 
                 {/* Icon */}
                 <div className="relative z-10 mx-auto mb-6 flex items-center justify-center">
-                {t.icon ? (
+                  {t.icon ? (
                     <img
-                    src={t.icon}
-                    alt={t.title}
-                    className="w-24 h-24 object-contain"
-                    draggable="false"
+                      src={t.icon}
+                      alt={t.title}
+                      className="w-24 h-24 object-contain"
+                      draggable="false"
                     />
-                ) : (
+                  ) : (
                     <span className="text-[#D4AF37] text-2xl">∴</span>
-                )}
+                  )}
                 </div>
-
 
                 {/* Text */}
                 <div className="relative z-10">
@@ -161,6 +174,7 @@ export default function Revision() {
                     {t.subtitle}
                   </div>
                 </div>
+
               </motion.button>
             ))}
           </div>

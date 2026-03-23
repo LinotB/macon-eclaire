@@ -5,9 +5,9 @@ import {
   OrbitControls,
   useGLTF,
   Environment,
-  Billboard,
   useTexture,
   Text,
+  Billboard,
 } from "@react-three/drei";
 
 import Character3D from "./Character3D";
@@ -22,7 +22,7 @@ const GRID_ROWS = 6;
 const USE_BLENDER_BOARD = true;
 const BLENDER_URL = "/models/collectif_board.glb";
 
-// Affichage fallback pour les autres joueurs
+// fallback si un joueur n'a pas d'avatarConfig
 const USE_CHARACTER_3D = false;
 
 const AVATAR_VISUAL_OFFSET = [0.10, 0.0, -0.06];
@@ -55,8 +55,23 @@ const THEME_ICONS = {
   cabinet: `${ICON_BASE}/cabinet.png`,
 };
 
-const ICON_Y_OFFSET = 0.1;
-const ICON_SIZE = 0.34;
+const ICON_Y_OFFSET = 0.025;
+const ICON_SIZE = 0.50;
+
+const ICON_SIZE_BY_KEY = {
+  quiz: 0.71,
+  augmentation: 0.72,
+  cabinet: 0.72,
+  depart: 0.76,
+  arrivee: 0.76,
+};
+
+const ICON_Y_OFFSET_BY_KEY = {
+  depart: 0.035,
+  arrivee: 0.035,
+  augmentation: 0.03,
+  cabinet: 0.03,
+};
 
 // ------------------- UTILS -------------------
 function idxToXZ(i, spacing) {
@@ -105,8 +120,8 @@ function normalizeThemeKey(theme) {
     .trim()
     .toLowerCase()
     .replace(/\s+/g, " ")
-    .replace(/[éèê]/g, "e")
-    .replace(/[àâ]/g, "a")
+    .replace(/[éèêë]/g, "e")
+    .replace(/[àâä]/g, "a")
     .replace(/[îï]/g, "i")
     .replace(/[ôö]/g, "o")
     .replace(/[ùûü]/g, "u");
@@ -117,109 +132,24 @@ function isQuizTheme(theme) {
   return t === "quiz" || t === "mix" || t === "aleatoire" || t === "aléatoire";
 }
 
-function resolveCellVisualKey(cell) {
-  const type = normalizeThemeKey(cell?.type);
-  const theme = normalizeThemeKey(cell?.theme);
-
-  // départ / arrivée
-  if (type === "start" || theme === "depart") return "depart";
-  if (type === "arrivee" || type === "arrival" || theme === "arrivee") return "arrivee";
-
-  // quiz
-  if (
-    type === "quiz" ||
-    theme === "quiz" ||
-    theme === "mix" ||
-    theme === "aleatoire" ||
-    theme === "aléatoire"
-  ) {
-    return "quiz";
-  }
-
-  // défi
-  if (type === "defi" || type === "defis" || theme === "defi" || theme === "defis") {
-    return "defi";
-  }
-
-  // événement
-  if (
-    type === "evenement" ||
-    type === "event" ||
-    theme === "evenement" ||
-    theme === "evenements" ||
-    theme === "event" ||
-    theme === "events" ||
-    theme === "evt"
-  ) {
-    return "evenement";
-  }
-
-  // augmentation
-  if (
-    type === "augmentation" ||
-    theme === "augmentation" ||
-    theme === "augmentation salaire" ||
-    theme === "augmentation de salaire" ||
-    theme === "augmentationation"
-  ) {
-    return "augmentation";
-  }
-
-  // cabinet
-  if (
-    type === "cabinet" ||
-    theme === "cabinet" ||
-    theme === "cabinet reflexion" ||
-    theme === "cabinet de reflexion"
-  ) {
-    return "cabinet";
-  }
-
-  // thèmes classiques
-  if (theme === "symbole" || theme === "symboles") return "symbole";
-  if (theme === "rituel" || theme === "rituels") return "rituel";
-  if (theme === "histoire") return "histoire";
-
-  if (
-    theme === "constitution" ||
-    theme === "constitutions" ||
-    theme === "reglement" ||
-    theme === "reglements" ||
-    theme === "constitution reglement" ||
-    theme === "constitution reglement interieur"
-  ) {
-    return "reglement";
-  }
-
-  return "symbole";
-}
-
 function themeToColor(theme) {
   const t = normalizeThemeKey(theme);
 
-  if (t === "quiz") return new THREE.Color("#111827");
-  if (t === "depart") return new THREE.Color("#8e8f93");
-  if (t === "arrivee") return new THREE.Color("#d4af37");
-  if (t === "augmentation") return new THREE.Color("#d9d9d9");
-  if (t === "cabinet") return new THREE.Color("#2b2b2b");
-  if (t === "symbole") return new THREE.Color("#6b3fa0");
-  if (t === "histoire") return new THREE.Color("#2f6f2e");
-  if (t === "reglement") return new THREE.Color("#d98c1a");
-  if (t === "rituel") return new THREE.Color("#3c5e97");
-  if (t === "defi") return new THREE.Color("#c0472d");
-  if (t === "evenement") return new THREE.Color("#bfc3c9");
+  if (t === "depart") return new THREE.Color("#B8B8B8");
+  if (t === "arrivee") return new THREE.Color("#7D6410");
+  if (t === "augmentation") return new THREE.Color("#E6E6E6");
+  if (t === "cabinet") return new THREE.Color("#000000");
 
-  return new THREE.Color("#94a3b8");
-}
+  if (t === "symbole") return new THREE.Color("#4B1F76");
+  if (t === "rituel") return new THREE.Color("#1D3F97");
+  if (t === "histoire") return new THREE.Color("#0D5D2A");
+  if (t === "reglement") return new THREE.Color("#8F3D12");
+  if (t === "defi") return new THREE.Color("#9E1217");
 
-function themeToEmissive(theme) {
-  const t = normalizeThemeKey(theme);
+  if (t === "evenement") return new THREE.Color("#CAB79D");
+  if (t === "quiz") return new THREE.Color("#FFFFFF");
 
-  if (t === "arrivee") return new THREE.Color("#6b4e00");
-  if (t === "depart") return new THREE.Color("#1f2937");
-  if (t === "quiz") return new THREE.Color("#0b1220");
-
-  return new THREE.Color("#000000");
+  return new THREE.Color("#94A3B8");
 }
 
 function themeToIconUrl(visualKey) {
@@ -228,19 +158,117 @@ function themeToIconUrl(visualKey) {
   return THEME_ICONS[t] || null;
 }
 
+function baseCaseName(name) {
+  return String(name || "").toLowerCase().split(".")[0];
+}
+
+function parseCaseInfo(name) {
+  const n = baseCaseName(name);
+  const match = n.match(/^case_(\d+)_(.+)$/);
+  if (!match) return null;
+
+  return {
+    index: Number(match[1]),
+    rawTheme: match[2],
+  };
+}
+
+function resolveVisualKeyFromObjectName(name) {
+  const info = parseCaseInfo(name);
+  if (!info) return null;
+
+  const t = normalizeThemeKey(info.rawTheme);
+
+  if (t === "depart" || t === "start") return "depart";
+  if (t === "arrivee" || t === "arrival") return "arrivee";
+  if (t === "symbole" || t === "symboles") return "symbole";
+  if (t === "rituel" || t === "rituels") return "rituel";
+  if (t === "histoire") return "histoire";
+  if (t === "defi" || t === "defis") return "defi";
+  if (t === "quiz" || t === "aleatoire" || t === "aléatoire" || t === "mix") {
+    return "quiz";
+  }
+  if (t === "evenement" || t === "evenements" || t === "event") return "evenement";
+  if (t === "augmentation" || t === "augmentation de salaire") return "augmentation";
+  if (t === "cabinet" || t === "cabinet de reflexion") return "cabinet";
+
+  if (
+    t === "reglement" ||
+    t === "reglements" ||
+    t === "constitution" ||
+    t === "constitutions" ||
+    t === "constitution_reglement" ||
+    t === "constitution reglement"
+  ) {
+    return "reglement";
+  }
+
+  return "symbole";
+}
+
+function makeQuizTexture() {
+  const size = 1024;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+
+  ctx.clearRect(0, 0, size, size);
+
+  const cx = size / 2;
+  const cy = size / 2;
+  const radius = size * 0.95;
+
+  const slices = ["#4B237A", "#1E3A8A", "#14532D", "#7C2D12", "#7F1D1D"];
+  const sliceAngle = (Math.PI * 2) / slices.length;
+  const startOffset = -30 * DEG;
+
+  for (let i = 0; i < slices.length; i++) {
+    const start = startOffset + i * sliceAngle;
+    const end = start + sliceAngle;
+
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, radius, start, end);
+    ctx.closePath();
+    ctx.fillStyle = slices[i];
+    ctx.fill();
+  }
+
+  const glow = ctx.createRadialGradient(cx, size * 0.35, 0, cx, size * 0.35, size * 0.55);
+  glow.addColorStop(0, "rgba(255,255,255,0.16)");
+  glow.addColorStop(0.4, "rgba(255,255,255,0.08)");
+  glow.addColorStop(1, "rgba(255,255,255,0)");
+
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, size, size);
+
+  ctx.fillStyle = "rgba(0,0,0,0.22)";
+  ctx.fillRect(0, 0, size, size);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  texture.anisotropy = 8;
+  texture.center.set(0.5, 0.5);
+  texture.rotation = 0;
+
+  return texture;
+}
+
+function getWorldCenterAndTop(obj) {
+  const box = new THREE.Box3().setFromObject(obj);
+  const center = box.getCenter(new THREE.Vector3());
+
+  return {
+    center,
+    top: new THREE.Vector3(center.x, box.max.y, center.z),
+  };
+}
+
 // ------------------- THEME ICON -------------------
 function ThemeIcon({ url, position, size = ICON_SIZE }) {
-  const [isValid, setIsValid] = useState(true);
-  let tex = null;
-
-  try {
-    tex = useTexture(isValid ? url : null);
-  } catch (e) {
-    if (isValid) {
-      console.warn("Icône introuvable :", url, e);
-      setIsValid(false);
-    }
-  }
+  const tex = useTexture(url);
 
   useEffect(() => {
     if (!tex) return;
@@ -248,25 +276,24 @@ function ThemeIcon({ url, position, size = ICON_SIZE }) {
     tex.needsUpdate = true;
   }, [tex]);
 
-  if (!tex || !isValid) return null;
+  if (!tex) return null;
 
   return (
-    <Billboard position={position} follow>
-      <mesh>
-        <planeGeometry args={[size, size]} />
-        <meshBasicMaterial
-          map={tex}
-          transparent
-          alphaTest={0.1}
-          depthWrite={false}
-          toneMapped={false}
-        />
-      </mesh>
-    </Billboard>
+    <mesh position={position} rotation={[-Math.PI / 2, 0, 0]} renderOrder={20}>
+      <planeGeometry args={[size, size]} />
+      <meshBasicMaterial
+        map={tex}
+        transparent
+        alphaTest={0.08}
+        depthWrite={false}
+        toneMapped={false}
+        side={THREE.DoubleSide}
+      />
+    </mesh>
   );
 }
 
-// ------------------- HALO JOUEUR ACTIF -------------------
+// ------------------- HALO -------------------
 function ActiveHalo() {
   const ref = useRef();
 
@@ -292,12 +319,12 @@ function ActiveHalo() {
   );
 }
 
-// ------------------- PSEUDO JOUEUR -------------------
+// ------------------- NOM JOUEUR -------------------
 function PlayerNameTag({ name }) {
   if (!name) return null;
 
   return (
-    <Billboard position={[0, 1.90, 0]} follow>
+    <Billboard position={[0, 1.9, 0]} follow>
       <Text
         fontSize={0.12}
         color="#D4AF37"
@@ -313,8 +340,8 @@ function PlayerNameTag({ name }) {
   );
 }
 
-// ------------------- BlenderBoard -------------------
-function BlenderBoard({ url, themeByIndex, onReady, onFit }) {
+// ------------------- BLENDER BOARD -------------------
+function BlenderBoard({ url, onReady, onFit }) {
   const { scene } = useGLTF(url);
   const sceneClone = useMemo(() => scene.clone(true), [scene]);
   const didInitRef = useRef(false);
@@ -322,6 +349,8 @@ function BlenderBoard({ url, themeByIndex, onReady, onFit }) {
   useEffect(() => {
     if (!sceneClone) return;
     if (didInitRef.current) return;
+
+    const quizTexture = makeQuizTexture();
 
     sceneClone.traverse((o) => {
       if (o?.isMesh) {
@@ -357,67 +386,79 @@ function BlenderBoard({ url, themeByIndex, onReady, onFit }) {
     const size2 = box2.getSize(new THREE.Vector3());
     const radius = Math.max(size2.x, size2.y, size2.z) || 30;
 
-    const cases = [];
+    const caseEntries = [];
+
     sceneClone.traverse((o) => {
       if (!o?.name) return;
-      const n = o.name.toLowerCase();
-      if (!n.startsWith("case_")) return;
 
-      cases.push(o);
+      const info = parseCaseInfo(o.name);
+      if (!info) return;
 
-      const idx = parseInt(o.name.split("_")[1], 10);
-      const visualKey = themeByIndex?.get(idx);
+      const { top } = getWorldCenterAndTop(o);
 
-      if (o.isMesh && visualKey != null) {
-        const col = themeToColor(visualKey);
-        const em = themeToEmissive(visualKey);
-
-        const mats = Array.isArray(o.material) ? o.material : [o.material];
-        const cloned = mats.map((m) => {
-          if (!m) return m;
-          const mm = m.clone();
-          mm.map = null;
-          if (mm.color) mm.color = col.clone();
-          if (mm.emissive) mm.emissive = em.clone();
-          mm.emissiveIntensity = 0.18;
-          mm.roughness = 0.68;
-          mm.metalness = 0.04;
-          mm.needsUpdate = true;
-          return mm;
-        });
-
-        o.material = Array.isArray(o.material) ? cloned : cloned[0];
-      }
+      caseEntries.push({
+        obj: o,
+        index: info.index,
+        visualKey: resolveVisualKeyFromObjectName(o.name),
+        position: top,
+      });
     });
 
-    if (!cases.length) {
-      console.error("❌ Aucun objet case_* trouvé dans le GLB.");
+    if (!caseEntries.length) {
+      console.error("❌ Aucune case case_XX_theme trouvée dans le GLB.");
       onReady?.({ ok: false, data: [] });
       onFit?.({ ok: false, radius });
       return;
     }
 
-    cases.sort(
-      (a, b) => parseInt(a.name.split("_")[1], 10) - parseInt(b.name.split("_")[1], 10)
-    );
+    caseEntries.sort((a, b) => a.index - b.index);
 
-    console.log("CASES BLENDER", cases.map((c) => c.name));
+    caseEntries.forEach((entry) => {
+      const obj = entry.obj;
+      const visualKey = entry.visualKey || "symbole";
 
-    const tmp = new THREE.Vector3();
-    const data = cases.map((obj) => {
-      const centerPos = obj.getWorldPosition(tmp.clone());
-      const caseBox = new THREE.Box3().setFromObject(obj);
+      if (!obj.isMesh) return;
 
-      return {
-        position: new THREE.Vector3(centerPos.x, caseBox.max.y, centerPos.z),
-      };
+      const col = themeToColor(visualKey);
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+
+      const cloned = mats.map((m) => {
+        if (!m) return m;
+
+        const mm = m.clone();
+
+        if (visualKey === "quiz") {
+          mm.map = quizTexture;
+          mm.transparent = false;
+
+          if (mm.color) mm.color = new THREE.Color("#ffffff");
+          if (mm.emissive) mm.emissive = new THREE.Color("#050505");
+          mm.emissiveIntensity = 0.08;
+          mm.roughness = 0.88;
+          mm.metalness = 0.02;
+        } else {
+          mm.map = null;
+
+          if (mm.color) mm.color = col.clone();
+          if (mm.emissive) mm.emissive = new THREE.Color("#000000");
+          mm.emissiveIntensity = 0.0;
+          mm.roughness = 0.92;
+          mm.metalness = 0.0;
+        }
+
+        mm.toneMapped = false;
+        mm.needsUpdate = true;
+        return mm;
+      });
+
+      obj.material = Array.isArray(obj.material) ? cloned : cloned[0];
     });
 
     didInitRef.current = true;
 
-    onReady?.({ ok: true, data });
+    onReady?.({ ok: true, data: caseEntries });
     onFit?.({ ok: true, radius });
-  }, [sceneClone, themeByIndex, onReady, onFit]);
+  }, [sceneClone, onReady, onFit]);
 
   return sceneClone ? <primitive object={sceneClone} /> : null;
 }
@@ -438,37 +479,33 @@ function BoardScene({
   const controlsRef = useRef();
   const didInitialFitRef = useRef(false);
 
-  const themeByIndex = useMemo(() => {
-    const m = new Map();
-
-    (cells || []).forEach((c, i) => {
-      const visualKey = resolveCellVisualKey(c);
-
-      console.log("CASE", i, {
-        rawType: c?.type,
-        rawTheme: c?.theme,
-        visualKey,
-      });
-
-      m.set(i, visualKey);
-    });
-
-    return m;
-  }, [cells]);
-
   const turnPlayerId = room?.state?.turnPlayerId || room?.meta?.hostId || null;
 
   const entries = useMemo(() => {
     const ids = players ? Object.keys(players) : [];
+
     return ids.map((id) => {
       const pl = players?.[id] || {};
-      const raw = pl.gender ?? pl.sexe ?? pl.avatarGender ?? pl.avatar?.gender ?? "";
+
+      const raw =
+        pl.gender ??
+        pl.sexe ??
+        pl.avatarGender ??
+        pl.avatar?.gender ??
+        pl.avatarConfig?.gender ??
+        "";
+
       const s = String(raw).trim().toLowerCase();
 
       const gender =
         s === "female" || s === "femme" || s === "f" || s === "woman" || s === "girl"
           ? "female"
           : "male";
+
+      const playerAvatarConfig =
+        pl.avatarConfig ||
+        pl.avatar ||
+        (id === localPlayerId ? localAvatarConfig : null);
 
       return {
         id,
@@ -477,9 +514,10 @@ function BoardScene({
         name: pl?.name || pl?.pseudo || id,
         isLocal: id === localPlayerId,
         isTurn: id === turnPlayerId,
+        avatarConfig: playerAvatarConfig,
       };
     });
-  }, [players, room, localPlayerId, turnPlayerId]);
+  }, [players, room, localPlayerId, turnPlayerId, localAvatarConfig]);
 
   const pawnTargets = useMemo(() => {
     const path = blenderPathRef.current;
@@ -487,8 +525,8 @@ function BoardScene({
     return entries.map((p) => {
       const posIndex = Number(p.pos ?? 0);
 
-      if (USE_BLENDER_BOARD && blenderReady && path[posIndex]) {
-        return { ...p, target: path[posIndex].clone() };
+      if (USE_BLENDER_BOARD && blenderReady && path[posIndex]?.position) {
+        return { ...p, target: path[posIndex].position.clone() };
       }
 
       const [x, z] = idxToXZ(posIndex, spacing);
@@ -501,42 +539,64 @@ function BoardScene({
     if (!USE_BLENDER_BOARD || !blenderReady || !path?.length) return [];
 
     const out = [];
-    for (let i = 0; i < path.length; i++) {
-      const pos = path[i];
-      if (!pos) continue;
 
-      const visualKey = themeByIndex.get(i);
+    for (let i = 0; i < path.length; i++) {
+      const entry = path[i];
+      if (!entry?.position) continue;
+
+      const visualKey = entry.visualKey;
       const iconUrl = themeToIconUrl(visualKey);
       if (!iconUrl) continue;
 
+      const iconSize = ICON_SIZE_BY_KEY[visualKey] ?? ICON_SIZE;
+      const iconYOffset = ICON_Y_OFFSET_BY_KEY[visualKey] ?? ICON_Y_OFFSET;
+
       out.push({
-        key: `icon-${i}-${iconUrl}`,
+        key: `icon-${entry.index}-${iconUrl}`,
         url: iconUrl,
-        position: new THREE.Vector3(pos.x, (pos.y ?? 0) + ICON_Y_OFFSET, pos.z),
+        size: iconSize,
+        position: new THREE.Vector3(
+          entry.position.x,
+          entry.position.y + iconYOffset,
+          entry.position.z
+        ),
       });
     }
 
     return out;
-  }, [themeByIndex, blenderReady]);
+  }, [blenderReady]);
+
+  useEffect(() => {
+    console.log("PLAYERS RAW", players);
+    console.log(
+      "ENTRIES AVATAR",
+      entries.map((p) => ({
+        id: p.id,
+        name: p.name,
+        pos: p.pos,
+        hasAvatarConfig: !!p.avatarConfig,
+        avatarConfig: p.avatarConfig,
+      }))
+    );
+  }, [players, entries]);
 
   return (
     <>
       <color attach="background" args={["#060A14"]} />
 
-      <ambientLight intensity={1.15} />
+      <ambientLight intensity={0.72} />
       <directionalLight
         position={[10, 20, 10]}
-        intensity={2.1}
+        intensity={1.15}
         castShadow={ENABLE_SHADOWS}
       />
-      <Environment preset="city" />
+      <Environment preset="warehouse" />
 
       <Suspense fallback={null}>
         <BlenderBoard
           url={boardUrl}
-          themeByIndex={themeByIndex}
           onReady={({ ok, data }) => {
-            blenderPathRef.current = (data || []).map((d) => d.position);
+            blenderPathRef.current = data || [];
             setBlenderReady(!!ok);
           }}
           onFit={({ radius }) => {
@@ -545,8 +605,9 @@ function BoardScene({
 
             const r = Math.max(10, Number(radius) || 30);
 
-            controlsRef.current.target.set(0, 0, 0);
-            controlsRef.current.object.position.set(0, r * 0.72, r * 1.32);
+            
+            controlsRef.current.target.set(-2.8, 1.2, -1.8);
+            controlsRef.current.object.position.set(6.5, r * 0.42, r * 0.62);
             controlsRef.current.update();
 
             didInitialFitRef.current = true;
@@ -556,7 +617,7 @@ function BoardScene({
 
       {iconInstances.map((ic) => (
         <Suspense key={ic.key} fallback={null}>
-          <ThemeIcon url={ic.url} position={ic.position} size={ICON_SIZE} />
+          <ThemeIcon url={ic.url} position={ic.position} size={ic.size} />
         </Suspense>
       ))}
 
@@ -571,34 +632,39 @@ function BoardScene({
         ];
 
         return (
-          <group
+          <AnimatedPawn
             key={p.id}
-            position={worldPosition}
+            target={new THREE.Vector3(...worldPosition)}
             rotation={[CHAR_ROT_X, CHAR_ROT_Y, CHAR_ROT_Z]}
+            speed={2.8}
           >
-            {p.isTurn && <ActiveHalo />}
+            {(isMoving) => (
+              <>
+                {p.isTurn && <ActiveHalo />}
+                <PlayerNameTag name={p.name} />
 
-            <PlayerNameTag name={p.name} />
-
-            {p.isLocal && localAvatarConfig ? (
-              <BoardAvatar
-                avatarConfig={localAvatarConfig}
-                position={AVATAR_VISUAL_OFFSET}
-                rotation={[0, 0, 0]}
-                scale={0.95}
-              />
-            ) : USE_CHARACTER_3D ? (
-              <Suspense fallback={null}>
-                <Character3D
-                  key={`${p.id}-${p.gender}`}
-                  url={p.gender === "female" ? MODEL_FEMALE_URL : MODEL_MALE_URL}
-                  isMoving={false}
-                  targetHeight={1.55}
-                  yOffset={0.0}
-                />
-              </Suspense>
-            ) : null}
-          </group>
+                {p.avatarConfig ? (
+                  <BoardAvatar
+                    avatarConfig={p.avatarConfig}
+                    position={AVATAR_VISUAL_OFFSET}
+                    rotation={[0, 0, 0]}
+                    scale={0.95}
+                    isMoving={isMoving}
+                  />
+                ) : USE_CHARACTER_3D ? (
+                  <Suspense fallback={null}>
+                    <Character3D
+                      key={`${p.id}-${p.gender}`}
+                      url={p.gender === "female" ? MODEL_FEMALE_URL : MODEL_MALE_URL}
+                      isMoving={isMoving}
+                      targetHeight={1.55}
+                      yOffset={0.0}
+                    />
+                  </Suspense>
+                ) : null}
+              </>
+            )}
+          </AnimatedPawn>
         );
       })}
 
@@ -608,11 +674,38 @@ function BoardScene({
         enablePan
         enableRotate
         enableZoom
-        minDistance={5}
-        maxDistance={400}
-        maxPolarAngle={Math.PI / 2.1}
+        minDistance={4}
+        maxDistance={60}
+        maxPolarAngle={Math.PI / 2.05}
       />
     </>
+  );
+}
+
+function AnimatedPawn({ target, rotation, children, speed = 2.4 }) {
+  const ref = useRef();
+  const [isMoving, setIsMoving] = useState(false);
+
+  useFrame((_, delta) => {
+    if (!ref.current || !target) return;
+
+    const current = ref.current.position;
+    const dist = current.distanceTo(target);
+
+    if (dist > 0.01) {
+      const step = Math.min(1, (speed * delta) / dist);
+      current.lerp(target, step);
+      setIsMoving(true);
+    } else {
+      current.copy(target);
+      if (isMoving) setIsMoving(false);
+    }
+  });
+
+  return (
+    <group ref={ref} rotation={rotation}>
+      {typeof children === "function" ? children(isMoving) : children}
+    </group>
   );
 }
 
@@ -645,7 +738,7 @@ export default function CollectifBoard3D({ room, className = "" }) {
       <div className="h-[78vh] min-h-[720px]">
         <Canvas
           shadows={ENABLE_SHADOWS}
-          camera={{ position: [0, 22, 30], fov: 38, near: 0.01, far: 5000 }}
+          camera={{ position: [6.5, 11, 16], fov: 24, near: 0.01, far: 5000 }}
           dpr={[1, 1.5]}
           gl={{ antialias: true, alpha: false }}
         >

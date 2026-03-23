@@ -1,7 +1,7 @@
 // src/pages/CollectifRoom.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 import {
   listenRoom,
@@ -20,7 +20,6 @@ import {
 } from "../services/rtdb";
 import { getPlayerId } from "../utils/playerId";
 
-// thèmes (images)
 import themeSymboles from "../assets/themes/symboles.png";
 import themeRituels from "../assets/themes/rituels.png";
 import themeHistoire from "../assets/themes/histoire.png";
@@ -29,9 +28,7 @@ import themeDefis from "../assets/themes/defis.png";
 import themeMix from "../assets/themes/mix.png";
 
 import CollectifBoard3D from "../components/board3d/CollectifBoard3D";
-
-// ✅ banque centralisée
-import { getQuestions } from "../data/questions"; // <-- NEW (au lieu de getRandomQuestion)
+import { getQuestions } from "../data/questions";
 
 const THEME_CONFIG = {
   symboles: {
@@ -114,10 +111,8 @@ function ActionBanner({ room }) {
 
   if (a.type === "question") {
     title = "Résultat";
-    if (a.outcome === "correct")
-      text = `✅ ${name} : bonne réponse (+${a.delta})`;
-    else if (a.outcome === "no_answer")
-      text = `⏱️ ${name} : pas de réponse (0)`;
+    if (a.outcome === "correct") text = `✅ ${name} : bonne réponse (+${a.delta})`;
+    else if (a.outcome === "no_answer") text = `⏱️ ${name} : pas de réponse (0)`;
     else text = `❌ ${name} : mauvaise réponse (+0)`;
   } else if (a.type === "evenement") {
     title = "Événement";
@@ -139,7 +134,7 @@ function ActionBanner({ room }) {
   }
 
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+    <div className="rounded-xl border border-white/10 bg-white/5 p-4 h-full">
       <div className="font-display tracking-[0.12em] text-xs text-white/70">
         {title}
       </div>
@@ -148,7 +143,6 @@ function ActionBanner({ room }) {
   );
 }
 
-/* ✅ Firebase peut stocker "cells" sous forme d'objet (0..65) au lieu d'un array */
 function normalizeCells(rawCells, size) {
   if (Array.isArray(rawCells)) return rawCells;
 
@@ -166,28 +160,206 @@ function normalizeCells(rawCells, size) {
   }));
 }
 
-// ✅ difficulté par case (simple et modifiable)
 function difficultyFromCell(cell) {
   const p = Number(cell?.points);
   if (p === 1 || p === 2 || p === 3) return p;
-
   if (cell?.type === "defi") return 3;
   if (cell?.type === "quiz") return 2;
   if (cell?.type === "question") return 2;
-
   return 1;
 }
 
-// ✅ helper : pioche une question en évitant les doublons
 function pickUniqueQuestion({ theme, difficulty, usedIdsSet }) {
   const pool = getQuestions({ theme, difficulty, count: 9999, shuffle: true });
-
-  // 1) essaie d'en trouver une jamais utilisée
   const fresh = pool.find((q) => q?.id && !usedIdsSet.has(String(q.id)));
   if (fresh) return fresh;
-
-  // 2) sinon fallback : accepte une répétition (si banque trop petite)
   return pool[0] || null;
+}
+
+function Pip({ active = false }) {
+  return (
+    <div className="flex items-center justify-center w-full h-full">
+      {active ? <span className="w-3 h-3 rounded-full bg-[#0A1628]" /> : null}
+    </div>
+  );
+}
+
+function DiceFace({ value }) {
+  const dotsByValue = {
+    1: [[2, 2]],
+    2: [
+      [1, 1],
+      [3, 3],
+    ],
+    3: [
+      [1, 1],
+      [2, 2],
+      [3, 3],
+    ],
+    4: [
+      [1, 1],
+      [3, 1],
+      [1, 3],
+      [3, 3],
+    ],
+    5: [
+      [1, 1],
+      [3, 1],
+      [2, 2],
+      [1, 3],
+      [3, 3],
+    ],
+    6: [
+      [1, 1],
+      [3, 1],
+      [1, 2],
+      [3, 2],
+      [1, 3],
+      [3, 3],
+    ],
+  };
+
+  const dots = dotsByValue[value] || [];
+
+  return (
+    <div className="grid grid-cols-3 grid-rows-3 w-full h-full p-2">
+      {Array.from({ length: 9 }).map((_, idx) => {
+        const col = (idx % 3) + 1;
+        const row = Math.floor(idx / 3) + 1;
+        const active = dots.some(([x, y]) => x === col && y === row);
+
+        return <Pip key={idx} active={active} />;
+      })}
+    </div>
+  );
+}
+
+function Dice3D({ value = 1, rolling = false, animKey = 0 }) {
+  const faceRotation = {
+    1: { x: 0, y: 0 },
+    2: { x: 0, y: -90 },
+    3: { x: -90, y: 0 },
+    4: { x: 90, y: 0 },
+    5: { x: 0, y: 90 },
+    6: { x: 180, y: 0 },
+  };
+
+  const finalFace = faceRotation[value] || faceRotation[1];
+
+  const faceClassName =
+    "absolute inset-0 rounded-2xl bg-gradient-to-br from-amber-300 to-amber-600 shadow-lg";
+
+  const faceStyle = {
+    backfaceVisibility: "hidden",
+    WebkitBackfaceVisibility: "hidden",
+  };
+
+  return (
+    <div
+      className="mx-auto mb-4 w-24 h-24 flex items-center justify-center"
+      style={{ perspective: 1000 }}
+    >
+      <motion.div
+        key={`${animKey}-${value}`}
+        animate={
+          rolling
+            ? {
+                rotateX: [0, 720, 1440, 2160],
+                rotateY: [0, 1080, 2160, 3240],
+                rotateZ: [0, 360, 720, 1080],
+                y: [0, -18, 0, -8, 0],
+                scale: [1, 1.14, 0.98, 1.08, 1],
+              }
+            : {
+                rotateX: finalFace.x,
+                rotateY: finalFace.y,
+                rotateZ: 0,
+                y: 0,
+                scale: 1,
+              }
+        }
+        transition={
+          rolling
+            ? {
+                duration: 1.6,
+                ease: "linear",
+                repeat: Infinity,
+              }
+            : {
+                duration: 0.7,
+                ease: [0.22, 1, 0.36, 1],
+              }
+        }
+        style={{
+          width: 72,
+          height: 72,
+          position: "relative",
+          transformStyle: "preserve-3d",
+          willChange: "transform",
+        }}
+      >
+        <div
+          className={faceClassName}
+          style={{
+            ...faceStyle,
+            transform: "translateZ(36px)",
+          }}
+        >
+          <DiceFace value={1} />
+        </div>
+
+        <div
+          className={faceClassName}
+          style={{
+            ...faceStyle,
+            transform: "rotateY(180deg) translateZ(36px)",
+          }}
+        >
+          <DiceFace value={6} />
+        </div>
+
+        <div
+          className={faceClassName}
+          style={{
+            ...faceStyle,
+            transform: "rotateY(90deg) translateZ(36px)",
+          }}
+        >
+          <DiceFace value={2} />
+        </div>
+
+        <div
+          className={faceClassName}
+          style={{
+            ...faceStyle,
+            transform: "rotateY(-90deg) translateZ(36px)",
+          }}
+        >
+          <DiceFace value={5} />
+        </div>
+
+        <div
+          className={faceClassName}
+          style={{
+            ...faceStyle,
+            transform: "rotateX(90deg) translateZ(36px)",
+          }}
+        >
+          <DiceFace value={3} />
+        </div>
+
+        <div
+          className={faceClassName}
+          style={{
+            ...faceStyle,
+            transform: "rotateX(-90deg) translateZ(36px)",
+          }}
+        >
+          <DiceFace value={4} />
+        </div>
+      </motion.div>
+    </div>
+  );
 }
 
 export default function CollectifRoom() {
@@ -197,17 +369,14 @@ export default function CollectifRoom() {
   const [room, setRoom] = useState(null);
   const [qLeft, setQLeft] = useState(0);
   const [localPick, setLocalPick] = useState(null);
+  const [diceAnimKey, setDiceAnimKey] = useState(0);
+  const [isDiceRolling, setIsDiceRolling] = useState(false);
 
   const finishingRef = useRef(false);
   const startingCardRef = useRef(false);
-
-  // ✅ anti-doublon LOCAL (par onglet / par client)
-  // Si tu veux l'anti-doublon "partagé" entre tous les joueurs, il faudra stocker un set côté RTDB (je te le fais après si tu veux).
   const usedQuestionIdsRef = useRef(new Set());
+  const prevDiceValueRef = useRef(null);
 
-  /* =========================
-     HOOKS
-     ========================= */
   useEffect(() => {
     const unsub = listenRoom(roomId, setRoom);
     return unsub;
@@ -218,7 +387,6 @@ export default function CollectifRoom() {
     return () => clearInterval(t);
   }, [roomId, playerId]);
 
-  // timer
   useEffect(() => {
     const status = room?.state?.qStatus || "idle";
     const endsAt = room?.state?.qEndsAt || 0;
@@ -228,8 +396,7 @@ export default function CollectifRoom() {
       return;
     }
 
-    const computeLeft = () =>
-      Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+    const computeLeft = () => Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
     setQLeft(computeLeft());
 
     const interval = setInterval(() => {
@@ -239,7 +406,6 @@ export default function CollectifRoom() {
     return () => clearInterval(interval);
   }, [room?.state?.qStatus, room?.state?.qEndsAt]);
 
-  // reset pick on new question/turn
   useEffect(() => {
     setLocalPick(null);
     finishingRef.current = false;
@@ -251,14 +417,12 @@ export default function CollectifRoom() {
     room?.state?.qCard?.id,
   ]);
 
-  // ✅ quand une nouvelle carte arrive dans la room, on marque son id comme "utilisé"
   useEffect(() => {
     const id = room?.state?.qCard?.id;
     if (!id) return;
     usedQuestionIdsRef.current.add(String(id));
   }, [room?.state?.qCard?.id]);
 
-  // host: auto-finish when time is truly over (based on endsAt)
   useEffect(() => {
     const status = room?.state?.qStatus || "idle";
     const endsAt = room?.state?.qEndsAt || 0;
@@ -280,7 +444,6 @@ export default function CollectifRoom() {
     room?.state?.qEndsAt,
   ]);
 
-  // host: consume moveRequest
   useEffect(() => {
     if (!room) return;
     const isHost = room?.meta?.hostId === playerId;
@@ -292,7 +455,6 @@ export default function CollectifRoom() {
     hostProcessMoveRequest(roomId);
   }, [room, playerId, roomId]);
 
-  // host: start question when actionNeedCard
   useEffect(() => {
     if (!room) return;
 
@@ -310,12 +472,10 @@ export default function CollectifRoom() {
     if (startingCardRef.current) return;
     startingCardRef.current = true;
 
-    // ✅ determine theme + difficulty, puis pioche UNIQUE dans la banque centralisée
     let theme = "symboles";
-    if (cell?.type === "quiz") theme = pickQuizTheme(); // souvent "mix" ou un thème
+    if (cell?.type === "quiz") theme = pickQuizTheme();
     else if (cell?.type === "defi") theme = "defis";
-    else if (cell?.type === "question")
-      theme = (cell?.theme || "symboles").toLowerCase();
+    else if (cell?.type === "question") theme = (cell?.theme || "symboles").toLowerCase();
 
     const difficulty = difficultyFromCell(cell);
 
@@ -325,10 +485,8 @@ export default function CollectifRoom() {
       usedIdsSet: usedQuestionIdsRef.current,
     });
 
-    // fallback si banque vide
     const nextCard =
-      picked ||
-      {
+      picked || {
         id: `fallback-${Date.now()}`,
         theme,
         title: "QUESTION",
@@ -341,21 +499,19 @@ export default function CollectifRoom() {
           "Ajoute des questions dans src/data/questions/<theme>.<difficulty>.js",
       };
 
-    // 🔁 points = difficulté si non défini
     const cardWithPoints = {
       ...nextCard,
       theme,
       points: nextCard.points || difficulty,
     };
 
-    // ✅ marque l'id comme utilisé (pour éviter que le host repioche la même avant que la room reçoive la carte)
-    if (cardWithPoints?.id)
+    if (cardWithPoints?.id) {
       usedQuestionIdsRef.current.add(String(cardWithPoints.id));
+    }
 
     startQuestion(roomId, cardWithPoints, 20);
   }, [room, playerId, roomId]);
 
-  // host: consume finishRequest
   useEffect(() => {
     if (!room) return;
     const isHost = room?.meta?.hostId === playerId;
@@ -366,17 +522,6 @@ export default function CollectifRoom() {
 
     hostProcessFinishRequest(roomId);
   }, [room, playerId, roomId]);
-
-  /* =========================
-     RENDER
-     ========================= */
-  if (!room) {
-    return (
-      <div className="min-h-screen bg-[#0B1120] text-white p-8">
-        Chargement…
-      </div>
-    );
-  }
 
   const playersEntries = room?.players ? Object.entries(room.players) : [];
   const positions = room?.board?.positions || {};
@@ -394,16 +539,15 @@ export default function CollectifRoom() {
   const card = room?.state?.qCard || null;
 
   const initiativeRolls = room?.state?.initiativeRolls || {};
-  const turnOrder = Array.isArray(room?.state?.turnOrder)
-    ? room.state.turnOrder
-    : [];
+  const turnOrder = Array.isArray(room?.state?.turnOrder) ? room.state.turnOrder : [];
 
   const size = Number(room?.board?.size || 66);
-  const cells = normalizeCells(room?.board?.cells, size);
+  normalizeCells(room?.board?.cells, size);
 
   const connectedIds = playersEntries
     .filter(([, p]) => p?.connected)
     .map(([id]) => id);
+
   const allRolled =
     connectedIds.length > 0 &&
     connectedIds.every((id) => typeof initiativeRolls[id] === "number");
@@ -418,8 +562,11 @@ export default function CollectifRoom() {
     isMyTurnRoll &&
     turnStage === "roll" &&
     qStatus === "idle";
+
   const canAnswer =
-    phase === "playing" && qStatus === "running" && isMyTurnAnswer;
+    phase === "playing" &&
+    qStatus === "running" &&
+    isMyTurnAnswer;
 
   const myInitiative = initiativeRolls[playerId];
   const turnOrderNames = turnOrder.map((id) => {
@@ -428,16 +575,25 @@ export default function CollectifRoom() {
   });
 
   const lastMove = room?.state?.lastMove;
-  const lastMoveName = lastMove?.playerId
-    ? room?.players?.[lastMove.playerId]?.name ||
-      lastMove.playerId.slice(0, 6)
-    : null;
-
   const activeIndex = Number(positions?.[turnPlayerId] ?? 0);
+  const diceValue = phase === "initiative" ? myInitiative : lastMove?.die || null;
 
-  /* =========================
-     Actions
-     ========================= */
+  useEffect(() => {
+    if (typeof diceValue === "number" && diceValue !== prevDiceValueRef.current) {
+      prevDiceValueRef.current = diceValue;
+      setDiceAnimKey((k) => k + 1);
+      setIsDiceRolling(false);
+    }
+  }, [diceValue]);
+
+  if (!room) {
+    return (
+      <div className="min-h-screen bg-[#0B1120] text-white p-8">
+        Chargement…
+      </div>
+    );
+  }
+
   const startGameFn = async () => {
     if (!isHost) return;
     await startInitiativePhase(roomId);
@@ -457,6 +613,27 @@ export default function CollectifRoom() {
   const onRollMove = async () => {
     if (!canRoll) return;
     await requestMoveRoll(roomId, playerId);
+  };
+
+  const diceButtonDisabled =
+    phase === "lobby" ||
+    (phase === "initiative" && typeof myInitiative === "number") ||
+    (phase === "playing" && !canRoll);
+
+  const onDiceClick = async () => {
+    if (diceButtonDisabled) return;
+
+    setDiceAnimKey((k) => k + 1);
+    setIsDiceRolling(true);
+
+    if (phase === "initiative") {
+      await onRollInitiative();
+      return;
+    }
+
+    if (phase === "playing") {
+      await onRollMove();
+    }
   };
 
   const pick = (i) => {
@@ -483,13 +660,10 @@ export default function CollectifRoom() {
 
   return (
     <div className="min-h-screen bg-[#0B1120] text-white p-6">
-      <div className="max-w-6xl mx-auto space-y-5">
-        {/* top bar */}
+      <div className="max-w-[1500px] mx-auto space-y-5">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="font-display text-2xl">
-              {room.meta?.name || "Partie"}
-            </div>
+            <div className="font-display text-2xl">PARTIE COLLECTIVE</div>
             <div className="text-white/50 text-sm">RoomId: {roomId}</div>
             <div className="text-white/50 text-sm">Phase: {phase}</div>
             <div className="text-white/50 text-sm">
@@ -510,153 +684,60 @@ export default function CollectifRoom() {
               </button>
             )}
 
-            {phase === "initiative" && (
-              <>
-                <button
-                  onClick={onRollInitiative}
-                  disabled={typeof myInitiative === "number"}
-                  className={[
-                    "rounded-md px-5 py-3 font-display tracking-[0.12em] border",
-                    typeof myInitiative === "number"
-                      ? "bg-white/10 text-white/30 cursor-not-allowed border-white/10"
-                      : "bg-[#D4AF37] text-black border-[#D4AF37]/30",
-                  ].join(" ")}
-                >
-                  {typeof myInitiative === "number"
-                    ? `DÉ LANCÉ : ${myInitiative}`
-                    : "LANCER LE DÉ"}
-                </button>
-
-                {isHost && (
-                  <button
-                    onClick={onLockInitiative}
-                    disabled={!allRolled}
-                    className={[
-                      "rounded-md px-5 py-3 font-display tracking-[0.12em] border",
-                      !allRolled
-                        ? "bg-white/10 text-white/30 cursor-not-allowed border-white/10"
-                        : "bg-[#D4AF37] text-black border-[#D4AF37]/30",
-                    ].join(" ")}
-                  >
-                    VALIDER L’ORDRE
-                  </button>
-                )}
-              </>
-            )}
-
-            {phase === "playing" && (
+            {phase === "initiative" && isHost && (
               <button
-                onClick={onRollMove}
-                disabled={!canRoll}
+                onClick={onLockInitiative}
+                disabled={!allRolled}
                 className={[
                   "rounded-md px-5 py-3 font-display tracking-[0.12em] border",
-                  !canRoll
+                  !allRolled
                     ? "bg-white/10 text-white/30 cursor-not-allowed border-white/10"
                     : "bg-[#D4AF37] text-black border-[#D4AF37]/30",
                 ].join(" ")}
               >
-                LANCER LE DÉ
+                VALIDER L’ORDRE
               </button>
             )}
           </div>
         </div>
 
-        {/* MAIN */}
-        <div className="grid xl:grid-cols-[2.35fr_0.95fr] gap-6">
-          {/* LEFT BOARD */}
-          <div className="space-y-4">
-            {/* Bandeau dé (dernier lancer) */}
-            <div className="rounded-xl border border-white/10 bg-white/5 p-4 flex items-center justify-between">
-              <div className="font-display tracking-[0.12em] text-sm text-white/80">
-                PLATEAU (3D)
-              </div>
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
+          <div className="space-y-4 min-w-0">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <div className="font-display tracking-[0.12em] text-xs text-white/70 mb-3">
+                  JOUEURS
+                </div>
 
-              <div className="text-xs text-white/45 flex items-center gap-3">
-                <AnimatePresence mode="popLayout">
-                  {lastMove?.die ? (
-                    <motion.div
-                      key={lastMove.at}
-                      initial={{ opacity: 0, y: -8, scale: 0.9 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 8 }}
-                      transition={{ duration: 0.25 }}
-                      className="px-3 py-1 rounded-full border border-white/10 bg-black/20"
-                      title="Dernier lancer"
-                    >
-                      🎲 {lastMoveName} :{" "}
-                      <span className="text-[#D4AF37]">{lastMove.die}</span>
-                    </motion.div>
-                  ) : null}
-                </AnimatePresence>
-              </div>
-            </div>
-
-            {/* Plateau 3D */}
-            <CollectifBoard3D room={room} activeIndex={activeIndex} />
-
-            {/* Texte d’aide */}
-            <div className="text-center text-white/35 text-xs">
-              {phase === "initiative"
-                ? "Chaque joueur lance le dé (score unique). Le host valide l’ordre."
-                : phase === "playing" && qStatus === "running"
-                ? isMyTurnAnswer
-                  ? "C’est ton tour : choisis puis VALIDE."
-                  : "Question en cours…"
-                : phase === "playing"
-                ? isMyTurnRoll
-                  ? "C’est ton tour : lance le dé."
-                  : "Attends ton tour…"
-                : "En attente…"}
-            </div>
-          </div>
-
-          {/* RIGHT */}
-          <div className="space-y-6">
-            <ActionBanner room={room} />
-
-            {/* players */}
-            <div className="rounded-xl border border-white/10 bg-white/5 p-5">
-              <div className="font-display tracking-[0.12em] text-sm mb-4">
-                JOUEURS
-              </div>
-
-              <div className="space-y-3">
-                {playersEntries.map(([id, p]) => {
-                  const roll = initiativeRolls[id];
-                  const isTurn = turnPlayerId === id;
-
-                  return (
-                    <div key={id} className="flex items-center justify-between">
-                      <div className="text-white/85">
-                        {p?.name || "?"}{" "}
-                        <span className="text-white/40">({p?.grade})</span>
-                        {id === playerId ? (
-                          <span className="ml-2 text-[#D4AF37]">• toi</span>
-                        ) : null}
-                        {id === room?.meta?.hostId ? (
-                          <span className="ml-2 text-white/35">• host</span>
-                        ) : null}
-                        {phase === "initiative" && typeof roll === "number" ? (
-                          <span className="ml-2 text-white/50">• 🎲 {roll}</span>
-                        ) : null}
+                <div className="space-y-2">
+                  {playersEntries.map(([id, p]) => {
+                    const isTurn = turnPlayerId === id;
+                    return (
+                      <div key={id} className="flex items-center justify-between text-sm">
+                        <div className="text-white/85">
+                          {p?.name || "?"}
+                          {id === playerId ? (
+                            <span className="ml-2 text-[#D4AF37]">• toi</span>
+                          ) : null}
+                        </div>
+                        <div className="text-white/50">
+                          pos: {positions[id] ?? 0}
+                          {isTurn ? (
+                            <span className="ml-2 text-[#D4AF37]">◀</span>
+                          ) : null}
+                        </div>
                       </div>
-
-                      <div className="text-white/40 text-sm">
-                        pos: {positions[id] ?? 0} {p?.connected ? "🟢" : "⚫️"}
-                        {isTurn ? (
-                          <span className="ml-2 text-[#D4AF37]">◀ tour</span>
-                        ) : null}
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
 
-              {turnOrderNames.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-white/10">
-                  <div className="font-display tracking-[0.12em] text-xs text-white/60 mb-2">
-                    ORDRE DE JEU
-                  </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <div className="font-display tracking-[0.12em] text-xs text-white/70 mb-3">
+                  ORDRE DE JEU
+                </div>
+
+                {turnOrderNames.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {turnOrderNames.map((x, idx) => (
                       <span
@@ -672,11 +753,93 @@ export default function CollectifRoom() {
                       </span>
                     ))}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="text-sm text-white/50">En attente…</div>
+                )}
+              </div>
+
+              <ActionBanner room={room} />
             </div>
 
-            {/* question */}
+            <CollectifBoard3D room={room} activeIndex={activeIndex} />
+
+            <div className="text-center text-white/35 text-xs">
+              {phase === "initiative"
+                ? "Chaque joueur lance le dé. Le host valide ensuite l’ordre."
+                : phase === "playing" && qStatus === "running"
+                ? isMyTurnAnswer
+                  ? "C’est ton tour : choisis puis valide."
+                  : "Question en cours…"
+                : phase === "playing"
+                ? isMyTurnRoll
+                  ? "C’est ton tour : lance le dé."
+                  : "Attends ton tour…"
+                : "En attente…"}
+            </div>
+          </div>
+
+          <div className="space-y-5">
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="bg-[#1A2B4A]/50 rounded-2xl p-5 border border-amber-400/10"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-amber-100 font-light tracking-[0.12em] uppercase text-sm">
+                  Lancer le dé
+                </h3>
+
+                {typeof diceValue === "number" && (
+                  <div className="text-xs text-amber-200/80 bg-amber-500/10 border border-amber-400/20 rounded-full px-3 py-1">
+                    Dernier lancer
+                  </div>
+                )}
+              </div>
+
+              <Dice3D
+                value={typeof diceValue === "number" ? diceValue : 1}
+                rolling={isDiceRolling}
+                animKey={diceAnimKey}
+              />
+
+              {phase === "playing" ? (
+                <button
+                  onClick={onDiceClick}
+                  disabled={diceButtonDisabled}
+                  className="w-full rounded-xl px-4 py-3 bg-gradient-to-r from-amber-900/80 to-amber-700/80 text-amber-100 border border-amber-400/20 hover:from-amber-800/80 hover:to-amber-600/80 disabled:opacity-40 disabled:cursor-not-allowed transition outline-none focus:outline-none focus:ring-0"
+                >
+                  {canRoll ? "Lancer le dé" : "Attends ton tour"}
+                </button>
+              ) : phase === "initiative" ? (
+                <button
+                  onClick={onDiceClick}
+                  disabled={diceButtonDisabled}
+                  className="w-full rounded-xl px-4 py-3 bg-gradient-to-r from-amber-900/80 to-amber-700/80 text-amber-100 border border-amber-400/20 hover:from-amber-800/80 hover:to-amber-600/80 disabled:opacity-40 disabled:cursor-not-allowed transition outline-none focus:outline-none focus:ring-0"
+                >
+                  {typeof myInitiative === "number" ? "Dé lancé" : "Lancer le dé"}
+                </button>
+              ) : (
+                <button
+                  disabled
+                  className="w-full rounded-xl px-4 py-3 bg-white/10 text-white/30 border border-white/10 cursor-not-allowed outline-none focus:outline-none focus:ring-0"
+                >
+                  En attente…
+                </button>
+              )}
+
+              <div className="mt-3 text-center text-xs text-white/50">
+                {phase === "initiative"
+                  ? typeof myInitiative === "number"
+                    ? `Ton score d’initiative : ${myInitiative}`
+                    : "Lance le dé pour déterminer l’ordre."
+                  : phase === "playing"
+                  ? isMyTurnRoll
+                    ? "C’est ton tour."
+                    : "Attends ton tour pour lancer le dé."
+                  : "La partie n’a pas encore commencé."}
+              </div>
+            </motion.div>
+
             <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
               <div
                 className="px-6 py-5 border-b border-white/10"
@@ -767,9 +930,7 @@ export default function CollectifRoom() {
                               <span className="text-white/80">{a}</span>
                             </div>
                             {localPick === i ? (
-                              <span className="text-[#D4AF37] font-display">
-                                ●
-                              </span>
+                              <span className="text-[#D4AF37] font-display">●</span>
                             ) : null}
                           </div>
                         </button>
@@ -805,7 +966,6 @@ export default function CollectifRoom() {
           </div>
         </div>
 
-        {/* debug */}
         <div className="text-center text-white/25 text-xs">
           phase: {phase} · qStatus: {qStatus} · host: {isHost ? "oui" : "non"} ·
           turnStage: {turnStage}

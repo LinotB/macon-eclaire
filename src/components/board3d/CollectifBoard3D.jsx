@@ -1,8 +1,7 @@
 import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
-  OrbitControls,
   useGLTF,
   Environment,
   useTexture,
@@ -25,7 +24,7 @@ const BLENDER_URL = "/models/collectif_board.glb";
 // fallback si un joueur n'a pas d'avatarConfig
 const USE_CHARACTER_3D = false;
 
-const AVATAR_VISUAL_OFFSET = [0.10, 0.0, -0.06];
+const AVATAR_VISUAL_OFFSET = [0.1, 0.0, -0.06];
 
 const MODEL_MALE_URL = "/models/male_walk/Walking.fbx";
 const MODEL_FEMALE_URL = "/models/female_walk/Walking.fbx";
@@ -56,7 +55,7 @@ const THEME_ICONS = {
 };
 
 const ICON_Y_OFFSET = 0.025;
-const ICON_SIZE = 0.50;
+const ICON_SIZE = 0.5;
 
 const ICON_SIZE_BY_KEY = {
   quiz: 0.71,
@@ -72,6 +71,11 @@ const ICON_Y_OFFSET_BY_KEY = {
   augmentation: 0.03,
   cabinet: 0.03,
 };
+
+// Caméra fixe de scène
+const FIXED_CAMERA_POSITION = new THREE.Vector3(7, 25, 18);
+const FIXED_CAMERA_LOOK_AT = new THREE.Vector3(-0.8, 1.2, 0.2);
+const FIXED_CAMERA_FOV = 35;
 
 // ------------------- UTILS -------------------
 function idxToXZ(i, spacing) {
@@ -341,7 +345,7 @@ function PlayerNameTag({ name }) {
 }
 
 // ------------------- BLENDER BOARD -------------------
-function BlenderBoard({ url, onReady, onFit }) {
+function BlenderBoard({ url, onReady }) {
   const { scene } = useGLTF(url);
   const sceneClone = useMemo(() => scene.clone(true), [scene]);
   const didInitRef = useRef(false);
@@ -382,10 +386,6 @@ function BlenderBoard({ url, onReady, onFit }) {
     sceneClone.scale.setScalar(s);
     sceneClone.updateMatrixWorld(true);
 
-    const box2 = new THREE.Box3().setFromObject(sceneClone);
-    const size2 = box2.getSize(new THREE.Vector3());
-    const radius = Math.max(size2.x, size2.y, size2.z) || 30;
-
     const caseEntries = [];
 
     sceneClone.traverse((o) => {
@@ -407,7 +407,6 @@ function BlenderBoard({ url, onReady, onFit }) {
     if (!caseEntries.length) {
       console.error("❌ Aucune case case_XX_theme trouvée dans le GLB.");
       onReady?.({ ok: false, data: [] });
-      onFit?.({ ok: false, radius });
       return;
     }
 
@@ -455,12 +454,26 @@ function BlenderBoard({ url, onReady, onFit }) {
     });
 
     didInitRef.current = true;
-
     onReady?.({ ok: true, data: caseEntries });
-    onFit?.({ ok: true, radius });
-  }, [sceneClone, onReady, onFit]);
+  }, [sceneClone, onReady]);
 
   return sceneClone ? <primitive object={sceneClone} /> : null;
+}
+
+// ------------------- CAMERA FIXE -------------------
+function FixedCameraRig() {
+  const { camera } = useThree();
+
+  useEffect(() => {
+    camera.position.copy(FIXED_CAMERA_POSITION);
+    camera.fov = FIXED_CAMERA_FOV;
+    camera.near = 0.01;
+    camera.far = 5000;
+    camera.lookAt(FIXED_CAMERA_LOOK_AT);
+    camera.updateProjectionMatrix();
+  }, [camera]);
+
+  return null;
 }
 
 // ------------------- BOARD SCENE -------------------
@@ -476,8 +489,6 @@ function BoardScene({
 
   const [blenderReady, setBlenderReady] = useState(false);
   const blenderPathRef = useRef([]);
-  const controlsRef = useRef();
-  const didInitialFitRef = useRef(false);
 
   const turnPlayerId = room?.state?.turnPlayerId || room?.meta?.hostId || null;
 
@@ -566,20 +577,6 @@ function BoardScene({
     return out;
   }, [blenderReady]);
 
-  useEffect(() => {
-    console.log("PLAYERS RAW", players);
-    console.log(
-      "ENTRIES AVATAR",
-      entries.map((p) => ({
-        id: p.id,
-        name: p.name,
-        pos: p.pos,
-        hasAvatarConfig: !!p.avatarConfig,
-        avatarConfig: p.avatarConfig,
-      }))
-    );
-  }, [players, entries]);
-
   return (
     <>
       <color attach="background" args={["#060A14"]} />
@@ -592,25 +589,14 @@ function BoardScene({
       />
       <Environment preset="warehouse" />
 
+      <FixedCameraRig />
+
       <Suspense fallback={null}>
         <BlenderBoard
           url={boardUrl}
           onReady={({ ok, data }) => {
             blenderPathRef.current = data || [];
             setBlenderReady(!!ok);
-          }}
-          onFit={({ radius }) => {
-            if (!controlsRef.current) return;
-            if (didInitialFitRef.current) return;
-
-            const r = Math.max(10, Number(radius) || 30);
-
-            
-            controlsRef.current.target.set(-2.8, 1.2, -1.8);
-            controlsRef.current.object.position.set(6.5, r * 0.42, r * 0.62);
-            controlsRef.current.update();
-
-            didInitialFitRef.current = true;
           }}
         />
       </Suspense>
@@ -667,17 +653,6 @@ function BoardScene({
           </AnimatedPawn>
         );
       })}
-
-      <OrbitControls
-        ref={controlsRef}
-        makeDefault
-        enablePan
-        enableRotate
-        enableZoom
-        minDistance={4}
-        maxDistance={60}
-        maxPolarAngle={Math.PI / 2.05}
-      />
     </>
   );
 }
@@ -738,7 +713,12 @@ export default function CollectifBoard3D({ room, className = "" }) {
       <div className="h-[78vh] min-h-[720px]">
         <Canvas
           shadows={ENABLE_SHADOWS}
-          camera={{ position: [6.5, 11, 16], fov: 24, near: 0.01, far: 5000 }}
+          camera={{
+            position: [12.8, 8.6, 13.8],
+            fov: 28,
+            near: 0.01,
+            far: 5000,
+          }}
           dpr={[1, 1.5]}
           gl={{ antialias: true, alpha: false }}
         >
